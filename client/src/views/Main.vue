@@ -1,7 +1,12 @@
 <template>
   <div class="page">
-    <upComponent></upComponent>
-    <downComponent></downComponent>
+    <div class="upComponent">
+      <upComponent></upComponent>
+    </div>
+    <div class="downComponent">
+      <downComponent></downComponent>
+    </div>
+
   </div>
 </template>
 
@@ -27,5 +32,11 @@ export default {
   background: #FFEFD5;
   width: 100%;
   height: 100%;
+}
+.upComponent {
+  height: 65%;
+}
+.downComponent {
+  height: 35%;
 }
 </style>

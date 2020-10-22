@@ -30,7 +30,7 @@ export default {
 }
 
 .change, .save, .start, .openFIle, .Stop, .save, .step {
-  width: 30%;
+  width: 50%;
   height: 25px;
 
 }
