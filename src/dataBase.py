@@ -15,9 +15,9 @@ from typing import List
 
 
 class Position:
-    def __init__(self):
-        self.x: int = 0
-        self.y: int = 0
+    def __init__(self, x: int = 0, y: int = 0):
+        self.x: int = x
+        self.y: int = y
 
 
 class Action:
@@ -45,13 +45,19 @@ class Program:
             self.table_states: List[State] = []
             self.init_table(_json)
 
-        if _program is not None:
+        elif _program is not None:
             self.default_position: Position = Position()
             self.id: str = _program.id
             self.default_field: List[List[str]] = _program.default_field
             self.default_position.x = _program.default_position.x
             self.default_position.y = _program.default_position.y
             self.table_states: List[State] = _program.table_states
+
+        else:
+            self.default_position: Position = Position()
+            self.id: str = ''
+            self.default_field: List[List[str]] = []
+            self.table_states: List[State] = []
 
     def to_json(self) -> dict:
         return {
@@ -88,15 +94,34 @@ class Program:
             )
             self.table_states.append(new_state)
 
+    def __str__(self):
+        return str(self.to_json())
+
 
 class Session:
-    def __init__(self, matrix: List[List[str]], last_position: dict, table_states: List[dict]):
-        self.matrix: List[List[str]] = matrix
-        self.last_position: Position = Position()
-        self.last_position.x = last_position['x']
-        self.last_position.y = last_position['y']
-        self.table_states: List[State] = []
-        self.init_table(table_states)
+    def __init__(self, matrix: List[List[str]], last_position, table_states):
+        if matrix == [] and last_position is None and table_states is None:
+            self.matrix: List[List[str]] = []
+            self.last_position: Position = Position()
+            self.table_states: List[State] = []
+
+        else:
+            if isinstance(last_position, Position):
+                self.last_position: Position = Position(
+                    last_position.x, last_position.y
+                )
+            else:
+                self.last_position: Position = Position()
+                self.last_position.x = last_position['x']
+                self.last_position.y = last_position['y']
+            self.matrix: List[List[str]] = matrix
+
+            if len(table_states) > 0:
+                if isinstance(table_states[0], dict):
+                    self.table_states: List[State] = []
+                    self.init_table(table_states)
+                else:
+                    self.table_states = table_states
 
     def init_table(self, table):
         for old_state in table:
@@ -126,13 +151,21 @@ class User:
                 _json['session']['table_states'],
             )
 
-        if _user is not None:
+        elif _user is not None:
             self.id: str = _user.id
             self.name: str = _user.name
             self.email: str = _user.email
             self.password: str = _user.password
             self.programs: List[str] = _user.programs
             self.session: Session = _user.session
+
+        else:
+            self.id: str = ''
+            self.name: str = ''
+            self.email: str = ''
+            self.password: str = ''
+            self.programs: List[str] = []
+            self.session: Session = Session([], None, None)
 
     def to_json(self) -> dict:
         return {
@@ -162,6 +195,9 @@ class User:
             }
         }
 
+    def __str__(self):
+        return str(self.to_json())
+
 
 class DataBase:
     def __init__(self):
@@ -171,22 +207,112 @@ class DataBase:
         self.__programs = self.__db['programs']
         self.__users = self.__db['users']
 
-    def insert_user(self, user: User):
+    def insert_user(self, user: User) -> str:
         return self.__users.insert_one(User(_user=user).to_json()).inserted_id
 
     def insert_program(self, program_: Program) -> str:
         return self.__programs.insert_one(Program(_program=program_).to_json()).inserted_id
 
+    def find_user(self, id_: str) -> User:
+        return User(_json=self.__users.find_one({'_id': id_}))
+
+    def find_program(self, id_: str) -> Program:
+        return Program(_json=self.__programs.find_one({'_id': id_}))
+
     @property
     def users(self) -> List[User]:
-        return list(User(_user=x) for x in self.__users.find({}))
+        return list(User(_json=x) for x in self.__users.find({}))
 
     @property
     def programs(self) -> List[Program]:
-        return list(Program(_program=x) for x in self.__programs.find())
+        return list(Program(_json=x) for x in self.__programs.find())
+
+    # CRITICAL_ZONE
+    def remove(self):
+        self.__users.drop()
+        self.__programs.drop()
+
+
+def example_save_program():
+    data_base = DataBase()
+    # print(len(data_base.programs))
+    # for x in data_base.programs:
+    #     print(x)
+
+    program_1 = Program()
+    program_1.id = '1'
+    program_1.default_position = Position(x=2, y=3)
+    program_1.default_field = [
+        ['2', '3', '4'],
+        ['5', '6', '7'],
+        ['10', '11', '12'],
+    ]
+    program_1.table_states = [
+        State('s1', 'q1', Action('s2', 'q2', 'L')),
+        State('s2', 'q2', Action('s3', 'q3', 'R')),
+        State('s3', 'q3', Action('s4', 'q4', 'U')),
+        State('s4', 'q4', Action('s1', 'q1', 'D')),
+    ]
+    print("Inserted program's id:", data_base.insert_program(program_1))
+    # for x in data_base.programs:
+    #     print(x)
+    # print(len(data_base.programs))
+
+
+def example_load_program(id_: str):
+    data_base = DataBase()
+    # for x in data_base.programs:
+    #     print(x)
+    print(data_base.find_program(id_))
+
+
+def example_save_user():
+    data_base = DataBase()
+    # print(len(data_base.users))
+    # for x in data_base.users:
+    #     print(x)
+
+    user_1 = User()
+    user_1.id = '1'
+    user_1.name = 'Kirill'
+    user_1.email = 'qweqwe@mail.ru'
+    user_1.password = 'qwerty123'
+    user_1.session = Session(
+        [
+            ['2', '3', '4'],
+            ['5', '6', '7'],
+            ['10', '11', '12'],
+        ],
+        Position(4, 5),
+        [
+            State('s1', 'q1', Action('s2', 'q2', 'L')),
+            State('s2', 'q2', Action('s3', 'q3', 'R')),
+            State('s3', 'q3', Action('s4', 'q4', 'U')),
+            State('s4', 'q4', Action('s1', 'q1', 'D')),
+        ]
+    )
+    user_1.programs = ['1', '2', '3']
+
+    print("Inserted user's id:", data_base.insert_user(user_1))
+    # for x in data_base.users:
+    #     print(x)
+    # print(len(data_base.users))
+
+
+def example_load_user(id_: str):
+    data_base = DataBase()
+    # for x in data_base.users:
+    #     print(x)
+    print(data_base.find_user(id_))
 
 
 if __name__ == "__main__":
+    DataBase().remove()
+    example_save_program()
+    example_load_program('1')
+    example_save_user()
+    example_load_user('1')
+    exit(0)
     # dataBase = DataBase()
     # programs = dataBase.programs
     # for program in programs:
@@ -352,4 +478,3 @@ if __name__ == "__main__":
     clone_user = User(_user=old_user)
     clone_user_json = clone_user.to_json()
     print('User -', old_user_json == clone_user_json)
-
