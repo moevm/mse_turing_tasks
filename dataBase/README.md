@@ -9,7 +9,6 @@ To run mongoDB server _script for linux_
     sudo apt-get install mongodb
     sudo service mongodb start
     tail -n200 /var/log/mongodb/mongodb.log
-    sudo mongod
     
 Or you can run bash-script
 
