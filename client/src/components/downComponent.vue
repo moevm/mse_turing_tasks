@@ -20,6 +20,6 @@ export default {
 .downComp {
   display: flex;
   width: 100%;
-  height: 250px;
+  min-height: 35vh
 }
 </style>

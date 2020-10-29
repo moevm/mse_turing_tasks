@@ -30,13 +30,14 @@ export default {
 <style>
 .page {
   background: #FFEFD5;
-  width: 100%;
-  height: 100%;
+  min-height: 100vh;
+  overflow:hidden;
 }
 .upComponent {
-  height: 65%;
+  min-height: 65vh;
+  min-width: 100vh;
 }
 .downComponent {
-  height: 35%;
+  min-height: 35vh;
 }
 </style>

@@ -20,7 +20,7 @@ export default {
 <style scoped>
 .upComp {
   display: flex;
-  width: 100%;
-  height: 600px;
+  min-height: 65vh;
+  /*width: 100vh;*/
 }
 </style>

@@ -1,6 +1,7 @@
 import Vue from 'vue'
 import Router from 'vue-router'
 import Authorization from "@/views/Authorization";
+
 Vue.use(Router)
 
 export default new Router({
@@ -8,11 +9,12 @@ export default new Router({
     routes: [
         {
             path: '/',
+            name: 'Authorization',
             component: Authorization
         },
         {
             path: '/main',
-            // path: '/',
+            name: 'Turing machine',
             component: () => import('./views/Main.vue')
         }
     ]
