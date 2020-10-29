@@ -1,2 +1,6 @@
-Project setup
+# server
+
+## Project setup
+```
 pip install -r requirements.txt
+```
