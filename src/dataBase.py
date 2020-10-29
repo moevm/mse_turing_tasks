@@ -27,11 +27,16 @@ class Action:
         self.move: str = move
 
 
-class State:
-    def __init__(self, symbol: str, state: str, action: Action):
+class Way:
+    def __init__(self, symbol: str, action: Action):
         self.symbol: str = symbol
+        self.action = action
+
+
+class State:
+    def __init__(self, state: str, ways: List[Way]):
         self.state: str = state
-        self.action: Action = action
+        self.ways: List[Way] = ways
 
 
 class Program:
@@ -69,13 +74,18 @@ class Program:
             },
             'table_states': [
                 {
-                    "symbol": state.symbol,
-                    "state": state.state,
-                    "action": {
-                        "symbol": state.action.symbol,
-                        "state": state.action.state,
-                        "move": state.action.move
-                    }
+                    'state': state.state,
+                    'ways': [
+                        {
+                            'symbol': way.symbol,
+                            'action': {
+                                'symbol': way.action.symbol,
+                                'state': way.action.state,
+                                'move': way.action.move
+                            }
+                        }
+                        for way in state.ways
+                    ]
                 }
                 for state in self.table_states
             ]
@@ -83,15 +93,19 @@ class Program:
 
     def init_table(self, _json):
         for old_state in _json['table_states']:
-            new_state = State(
-                old_state['symbol'],
-                old_state['state'],
-                Action(
-                    old_state['action']['symbol'],
-                    old_state['action']['state'],
-                    old_state['action']['move']
+            ways = []
+            for way in old_state['ways']:
+                ways.append(
+                    Way(
+                        way['symbol'],
+                        Action(
+                            way['action']['symbol'],
+                            way['action']['state'],
+                            way['action']['move'],
+                        )
+                    )
                 )
-            )
+            new_state = State(old_state['state'], ways)
             self.table_states.append(new_state)
 
     def __str__(self):
@@ -125,15 +139,19 @@ class Session:
 
     def init_table(self, table):
         for old_state in table:
-            new_state = State(
-                old_state['symbol'],
-                old_state['state'],
-                Action(
-                    old_state['action']['symbol'],
-                    old_state['action']['state'],
-                    old_state['action']['move']
+            ways = []
+            for way in old_state['ways']:
+                ways.append(
+                    Way(
+                        way['symbol'],
+                        Action(
+                            way['action']['symbol'],
+                            way['action']['state'],
+                            way['action']['move'],
+                        )
+                    )
                 )
-            )
+            new_state = State(old_state['state'], ways)
             self.table_states.append(new_state)
 
 
@@ -182,13 +200,18 @@ class User:
                 },
                 'table_states': [
                     {
-                        "symbol": state.symbol,
-                        "state": state.state,
-                        "action": {
-                            "symbol": state.action.symbol,
-                            "state": state.action.state,
-                            "move": state.action.move
-                        }
+                        'state': state.state,
+                        'ways': [
+                            {
+                                'symbol': way.symbol,
+                                'action': {
+                                    'symbol': way.action.symbol,
+                                    'state': way.action.state,
+                                    'move': way.action.move
+                                }
+                            }
+                            for way in state.ways
+                        ]
                     }
                     for state in self.session.table_states
                 ]
@@ -248,10 +271,14 @@ def example_save_program():
         ['10', '11', '12'],
     ]
     program_1.table_states = [
-        State('s1', 'q1', Action('s2', 'q2', 'L')),
-        State('s2', 'q2', Action('s3', 'q3', 'R')),
-        State('s3', 'q3', Action('s4', 'q4', 'U')),
-        State('s4', 'q4', Action('s1', 'q1', 'D')),
+        State('q0', [
+            Way('s1', Action('s2', 'q1', 'L')),
+            Way('s2', Action('s3', 'q2', 'R')),
+        ]),
+        State('q1', [
+            Way('s3', Action('s3', 'q3', 'U')),
+            Way('s4', Action('s4', 'q4', 'D')),
+        ]),
     ]
     print("Inserted program's id:", data_base.insert_program(program_1))
     # for x in data_base.programs:
@@ -285,10 +312,14 @@ def example_save_user():
         ],
         Position(4, 5),
         [
-            State('s1', 'q1', Action('s2', 'q2', 'L')),
-            State('s2', 'q2', Action('s3', 'q3', 'R')),
-            State('s3', 'q3', Action('s4', 'q4', 'U')),
-            State('s4', 'q4', Action('s1', 'q1', 'D')),
+            State('q0', [
+                Way('s1', Action('s2', 'q1', 'L')),
+                Way('s2', Action('s3', 'q2', 'R')),
+            ]),
+            State('q1', [
+                Way('s3', Action('s3', 'q3', 'U')),
+                Way('s4', Action('s4', 'q4', 'D')),
+            ]),
         ]
     )
     user_1.programs = ['1', '2', '3']
@@ -307,172 +338,128 @@ def example_load_user(id_: str):
 
 
 if __name__ == "__main__":
-    DataBase().remove()
-    example_save_program()
-    example_load_program('1')
-    example_save_user()
-    example_load_user('1')
-    exit(0)
+
+    # DataBase().remove()
+    # example_save_program()
+    # example_load_program('1')
+    # example_save_user()
+    # example_load_user('1')
+    # exit(0)
     # dataBase = DataBase()
     # programs = dataBase.programs
     # for program in programs:
     #     print(program['_id'])
     # print(dataBase.users)
     old_program = {
-        "_id": 1,
-        "default_field": [
-            [
-                "0",
-                "0",
-                "0"
-            ],
-            [
-                "0",
-                "0",
-                "0"
-            ],
-            [
-                "0",
-                "0",
-                "0"
-            ]
-        ],
-        "default_position": {
-            "x": 1,
-            "y": 2
-        },
-        "table_states": [
+      "_id": 1,
+      "default_field": [
+        ["0", "0", "0"],
+        ["0", "0", "0"],
+        ["0", "0", "0"]
+      ],
+      "default_position": {
+        "x": 1,
+        "y": 2
+      },
+      "table_states": [
+        {
+          "state": "q0",
+          "ways": [
             {
-                "symbol": "s1",
-                "state": "q1",
-                "action": {
-                    "symbol": "s2",
-                    "state": "q2",
-                    "move": "L"
-                }
-            },
-            {
-                "symbol": "s2",
-                "state": "q2",
-                "action": {
-                    "symbol": "s3",
-                    "state": "q2",
-                    "move": "R"
-                }
-            },
-            {
-                "symbol": "s3",
-                "state": "q2",
-                "action": {
-                    "symbol": "s2",
-                    "state": "q3",
-                    "move": "U"
-                }
-            },
-            {
-                "symbol": "s2",
-                "state": "q3",
-                "action": {
-                    "symbol": "s3",
-                    "state": "q3",
-                    "move": "D"
-                }
-            },
-            {
-                "symbol": "s3",
-                "state": "q3",
-                "action": {
-                    "symbol": "s1",
-                    "state": "q1",
-                    "move": "N"
-                }
+              "symbol": "a",
+              "action": {
+                "symbol": "b",
+                "state": "q0",
+                "move": "r"
+              }
             }
-        ]
+          ]
+        },
+        {
+          "state": "q1",
+          "ways": [
+            {
+              "symbol": "a",
+              "action": {
+                "symbol": "a",
+                "state": "q1",
+                "move": "r"
+              }
+            },
+            {
+              "symbol": "b",
+              "action": {
+                "symbol": "a",
+                "state": "q1",
+                "move": "r"
+              }
+            }
+          ]
+        }
+      ]
     }
     program = Program(_json=old_program)
     clone_program = Program(_program=program)
     new_program = program.to_json()
+    print(program.to_json())
     print('Program -', program.to_json() == clone_program.to_json())
     old_user_json = {
-        "_id": "1",
-        "name": "Kirill",
-        "email": "qweqwe@mail.ru",
-        "password": "qwerty123",
-        "session": {
-            "matrix": [
-                [
-                    1,
-                    2,
-                    3
-                ],
-                [
-                    4,
-                    5,
-                    6
-                ],
-                [
-                    7,
-                    8,
-                    9
-                ]
-            ],
-            "last_position": {
-                "x": 1,
-                "y": 2
-            },
-            "table_states": [
-                {
-                    "symbol": "s1",
-                    "state": "q1",
-                    "action": {
-                        "symbol": "s2",
-                        "state": "q2",
-                        "move": "L"
-                    }
-                },
-                {
-                    "symbol": "s2",
-                    "state": "q2",
-                    "action": {
-                        "symbol": "s3",
-                        "state": "q2",
-                        "move": "R"
-                    }
-                },
-                {
-                    "symbol": "s3",
-                    "state": "q2",
-                    "action": {
-                        "symbol": "s2",
-                        "state": "q3",
-                        "move": "U"
-                    }
-                },
-                {
-                    "symbol": "s2",
-                    "state": "q3",
-                    "action": {
-                        "symbol": "s3",
-                        "state": "q3",
-                        "move": "D"
-                    }
-                },
-                {
-                    "symbol": "s3",
-                    "state": "q3",
-                    "action": {
-                        "symbol": "s1",
-                        "state": "q1",
-                        "move": "N"
-                    }
-                }
-            ]
+      "_id": 1,
+      "name": "Kirill",
+      "email": "qweqwe@mail.ru",
+      "password": "qwerty123",
+      "session": {
+        "matrix": [
+          ["0", "0", "0"],
+          ["0", "0", "0"],
+          ["0", "0", "0"]
+        ],
+        "last_position": {
+          "x": 1,
+          "y": 2
         },
-        "programs": [
-            "1",
-            "2",
-            "3"
+        "table_states": [
+          {
+            "state": "q0",
+            "ways": [
+              {
+                "symbol": "a",
+                "action": {
+                  "symbol": "b",
+                  "state": "q0",
+                  "move": "r"
+                }
+              }
+            ]
+          },
+          {
+            "state": "q1",
+            "ways": [
+              {
+                "symbol": "a",
+                "action": {
+                  "symbol": "a",
+                  "state": "q1",
+                  "move": "r"
+                }
+              },
+              {
+                "symbol": "b",
+                "action": {
+                  "symbol": "a",
+                  "state": "q1",
+                  "move": "r"
+                }
+              }
+            ]
+          }
         ]
+      },
+      "programs": [
+        "1",
+        "2",
+        "3"
+      ]
     }
     old_user = User(_json=old_user_json)
     clone_user = User(_user=old_user)

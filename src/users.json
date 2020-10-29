@@ -7,21 +7,9 @@
       "password": "qwerty123",
       "session": {
         "matrix": [
-          [
-            1,
-            2,
-            3
-          ],
-          [
-            4,
-            5,
-            6
-          ],
-          [
-            7,
-            8,
-            9
-          ]
+          ["0", "0", "0"],
+          ["0", "0", "0"],
+          ["0", "0", "0"]
         ],
         "last_position": {
           "x": 1,
@@ -29,49 +17,38 @@
         },
         "table_states": [
           {
-            "symbol": "s1",
+            "state": "q0",
+            "ways": [
+              {
+                "symbol": "a",
+                "action": {
+                  "symbol": "b",
+                  "state": "q0",
+                  "move": "r"
+                }
+              }
+            ]
+          },
+          {
             "state": "q1",
-            "action": {
-              "symbol": "s2",
-              "state": "q2",
-              "move": "L"
-            }
-          },
-          {
-            "symbol": "s2",
-            "state": "q2",
-            "action": {
-              "symbol": "s3",
-              "state": "q2",
-              "move": "R"
-            }
-          },
-          {
-            "symbol": "s3",
-            "state": "q2",
-            "action": {
-              "symbol": "s2",
-              "state": "q3",
-              "move": "U"
-            }
-          },
-          {
-            "symbol": "s2",
-            "state": "q3",
-            "action": {
-              "symbol": "s3",
-              "state": "q3",
-              "move": "D"
-            }
-          },
-          {
-            "symbol": "s3",
-            "state": "q3",
-            "action": {
-              "symbol": "s1",
-              "state": "q1",
-              "move": "N"
-            }
+            "ways": [
+              {
+                "symbol": "a",
+                "action": {
+                  "symbol": "a",
+                  "state": "q1",
+                  "move": "r"
+                }
+              },
+              {
+                "symbol": "b",
+                "action": {
+                  "symbol": "a",
+                  "state": "q1",
+                  "move": "r"
+                }
+              }
+            ]
           }
         ]
       },
