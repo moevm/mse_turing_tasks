@@ -1,4 +1,5 @@
 from flask import Flask, jsonify, request
+from flask_cors import CORS
 import turing
 import json
 
@@ -6,6 +7,7 @@ DEBUG = True
 
 app = Flask(__name__)
 app.config.from_object(__name__)
+CORS(app)
 
 @app.route('/register', methods=['POST'])
 def register():

@@ -83,14 +83,20 @@ class Field:
     def __getitem__(self, position):
         value = self.array
         for i in range(self.dimensions):
-            value = value[position[-1 - i]]
+            if(position[-1 - i] >= 0):
+                value = value[position[-1 - i]]
+            else:
+                raise IndexError
 
         return value
 
     def __setitem__(self, position, value):
         subArray = self.array
         for i in range(self.dimensions - 1):
-            subArray = subArray[position[-1 - i]]
+            if(position[-1 - i] >= 0):
+                subArray = subArray[position[-1 - i]]
+            else:
+                raise IndexError
 
         subArray[position[0]] = value
 
@@ -239,12 +245,40 @@ langton = {
                 }
         }
 
-#machine = TuringMachine()
-#result = machine.fullExecute(twoDimensionMoves, states, Field(2, 11, filler='0'), "u", [5, 5])
-#diff = machine.startDebug(twoDimensionMoves, states, Field(2, 11, filler='0'), "u", [5, 5])
-#while(diff):
-    #print(diff)
-    #diff = machine.nextState()
+states = {
+    "q0" : 
+    {
+        "a" :
+        {
+            "move" : "l", 
+            "write" : "b",
+            "state" : "q0"
+        },
+        "b" :
+        {
+            "move" : "l", 
+            "write" : "a",
+            "state" : "q1"
+        }
+    },
+    "q1" : 
+    {
+        "a" :
+        {
+            "move" : "l", 
+            "write" : "a",
+            "state" : "q1"
+        },
+        "b" :
+        {
+            "move" : "l", 
+            "write" : "a",
+            "state" : "q1"
+        }
+    }
+}
 
-#for i in result:
-    #print(i)
+field  = [i for i in "abababa"]
+machine = TuringMachine()
+result = machine.fullExecute(oneDimensionMoves, states, Field(1, len(field), values=field), "q0", [0])
+print(result)
