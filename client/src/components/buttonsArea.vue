@@ -205,7 +205,7 @@ export default {
         this.fillRequest()
         // console.log(this.serverRequest)
         bus.$emit("clicked", "запущен полный прогон машины");
-        axios.post('http://wintari.pythonanywhere.com/session/runbpc',
+        axios.post('https://wintari.pythonanywhere.com/session/runbpc',
             this.serverRequest,
             {
               headers: {
