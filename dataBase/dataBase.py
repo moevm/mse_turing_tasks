@@ -12,6 +12,35 @@ from typing import List
 #     RIGHT = 'R'
 #     UP = 'U'
 #     DOWN = 'D'
+def get_in_table(states):
+    """to DB"""
+    table = []
+    for state in states:
+        d = {'state': state, 'ways': []}
+        for way in states[state]:
+            action = {
+                "symbol": states[state][way]['write'],
+                "state": states[state][way]['state'],
+                "move": states[state][way]['move']
+            }
+            d['ways'].append({'symbol': way, 'action': action})
+        table.append(d)
+    return table
+
+
+def get_out_table(input_table):
+    """from DB"""
+    states = {}
+    for row in input_table:
+        if row['state'] not in states:
+            states[row['state']] = {}
+        for way in row['ways']:
+            states[row['state']][way['symbol']] = {
+                'move': way['action']['move'],
+                'write': way['action']['symbol'],
+                'state': way['action']['state'],
+            }
+    return states
 
 
 class Position:
@@ -224,11 +253,26 @@ class User:
 
 class DataBase:
     def __init__(self):
-        self.__client = pymongo.MongoClient('localhost', 27017)
-        self.__db = self.__client['turing']
+        self.__client = pymongo.MongoClient(
+            "mongodb+srv://admin:admin@turingcluster.nzveq.mongodb.net/turing?retryWrites=true&w=majority")
+        self.__db = self.__client.turing
+
+        # self.__client = pymongo.MongoClient('localhost', 27017)
+        # self.__db = self.__client['turing']
 
         self.__programs = self.__db['programs']
         self.__users = self.__db['users']
+
+    def create_program(self, field: List[List[str]], position: List[int], states: dict):
+        program = {
+            'default_field': field,
+            'default_position': {
+                'x': position[0],
+                'y': position[1] if len(position) == 2 else None
+            },
+            'table_states': get_in_table(states)
+        }
+        return self.__programs.insert_one(program).inserted_id
 
     def insert_user(self, user: User) -> str:
         return self.__users.insert_one(User(_user=user).to_json()).inserted_id
@@ -290,7 +334,7 @@ def example_load_program(id_: str):
     data_base = DataBase()
     # for x in data_base.programs:
     #     print(x)
-    print(data_base.find_program(id_))
+    return data_base.find_program(id_)
 
 
 def example_save_user():
@@ -338,130 +382,11 @@ def example_load_user(id_: str):
 
 
 if __name__ == "__main__":
-
-    # DataBase().remove()
-    # example_save_program()
-    # example_load_program('1')
-    # example_save_user()
-    # example_load_user('1')
-    # exit(0)
-    # dataBase = DataBase()
-    # programs = dataBase.programs
-    # for program in programs:
-    #     print(program['_id'])
-    # print(dataBase.users)
-    old_program = {
-      "_id": 1,
-      "default_field": [
-        ["0", "0", "0"],
-        ["0", "0", "0"],
-        ["0", "0", "0"]
-      ],
-      "default_position": {
-        "x": 1,
-        "y": 2
-      },
-      "table_states": [
-        {
-          "state": "q0",
-          "ways": [
-            {
-              "symbol": "a",
-              "action": {
-                "symbol": "b",
-                "state": "q0",
-                "move": "r"
-              }
-            }
-          ]
-        },
-        {
-          "state": "q1",
-          "ways": [
-            {
-              "symbol": "a",
-              "action": {
-                "symbol": "a",
-                "state": "q1",
-                "move": "r"
-              }
-            },
-            {
-              "symbol": "b",
-              "action": {
-                "symbol": "a",
-                "state": "q1",
-                "move": "r"
-              }
-            }
-          ]
-        }
-      ]
-    }
-    program = Program(_json=old_program)
-    clone_program = Program(_program=program)
-    new_program = program.to_json()
-    print(program.to_json())
-    print('Program -', program.to_json() == clone_program.to_json())
-    old_user_json = {
-      "_id": 1,
-      "name": "Kirill",
-      "email": "qweqwe@mail.ru",
-      "password": "qwerty123",
-      "session": {
-        "matrix": [
-          ["0", "0", "0"],
-          ["0", "0", "0"],
-          ["0", "0", "0"]
-        ],
-        "last_position": {
-          "x": 1,
-          "y": 2
-        },
-        "table_states": [
-          {
-            "state": "q0",
-            "ways": [
-              {
-                "symbol": "a",
-                "action": {
-                  "symbol": "b",
-                  "state": "q0",
-                  "move": "r"
-                }
-              }
-            ]
-          },
-          {
-            "state": "q1",
-            "ways": [
-              {
-                "symbol": "a",
-                "action": {
-                  "symbol": "a",
-                  "state": "q1",
-                  "move": "r"
-                }
-              },
-              {
-                "symbol": "b",
-                "action": {
-                  "symbol": "a",
-                  "state": "q1",
-                  "move": "r"
-                }
-              }
-            ]
-          }
-        ]
-      },
-      "programs": [
-        "1",
-        "2",
-        "3"
-      ]
-    }
-    old_user = User(_json=old_user_json)
-    clone_user = User(_user=old_user)
-    clone_user_json = clone_user.to_json()
-    print('User -', old_user_json == clone_user_json)
+    table = example_load_program('1').to_json()['table_states']
+    print(json.dumps(table, indent=2))
+    out_table = get_out_table(table)
+    print(json.dumps(out_table, indent=2))
+    second = get_in_table(out_table)
+    print(second)
+    print(table == second)
+    print(json.dumps(table) == json.dumps(second))
