@@ -255,7 +255,7 @@ class DataBase:
     def __init__(self):
         self.__client = pymongo.MongoClient(
             "mongodb+srv://admin:admin@turingcluster.nzveq.mongodb.net/turing?retryWrites=true&w=majority")
-        self.__db = self.__client.turing
+        self.__db = self.__client['turing']
 
         # self.__client = pymongo.MongoClient('localhost', 27017)
         # self.__db = self.__client['turing']
@@ -263,7 +263,19 @@ class DataBase:
         self.__programs = self.__db['programs']
         self.__users = self.__db['users']
 
-    def create_program(self, field: List[List[str]], position: List[int], states: dict):
+    def insert_user_old(self, user: User) -> str:
+        return self.__users.insert_one(User(_user=user).to_json()).inserted_id
+
+    def insert_program_old(self, program_: Program) -> str:
+        return self.__programs.insert_one(Program(_program=program_).to_json()).inserted_id
+
+    def find_user(self, id_: str) -> User:
+        return User(_json=self.__users.find_one({'_id': id_}))
+
+    def remove_user(self, id_: str):
+        return self.__users.delete_one({'_id': id_}).deleted_count
+
+    def insert_program(self, field: List[List[str]], position: List[int], states: dict):
         program = {
             'default_field': field,
             'default_position': {
@@ -274,25 +286,28 @@ class DataBase:
         }
         return self.__programs.insert_one(program).inserted_id
 
-    def insert_user(self, user: User) -> str:
-        return self.__users.insert_one(User(_user=user).to_json()).inserted_id
+    def find_program(self, id_: str) -> dict:
+        program = self.__programs.find_one({'_id': id_})
+        return {
+            "_id": program['_id'],
+            "default_field": program['default_field'],
+            "default_position": [
+                program['default_position']['x'],
+                program['default_position']['y'],
+            ],
+            "table_states": get_out_table(program['table_states'])
+        }
 
-    def insert_program(self, program_: Program) -> str:
-        return self.__programs.insert_one(Program(_program=program_).to_json()).inserted_id
-
-    def find_user(self, id_: str) -> User:
-        return User(_json=self.__users.find_one({'_id': id_}))
-
-    def find_program(self, id_: str) -> Program:
-        return Program(_json=self.__programs.find_one({'_id': id_}))
+    def remove_program(self, id_: str):
+        return self.__programs.delete_one({'_id': id_}).deleted_count
 
     @property
-    def users(self) -> List[User]:
-        return list(User(_json=x) for x in self.__users.find({}))
+    def users(self) -> List[dict]:
+        return list(self.__users.find({}))
 
     @property
-    def programs(self) -> List[Program]:
-        return list(Program(_json=x) for x in self.__programs.find())
+    def programs(self) -> List[dict]:
+        return list(self.__programs.find())
 
     # CRITICAL_ZONE
     def remove(self):
@@ -324,7 +339,7 @@ def example_save_program():
             Way('s4', Action('s4', 'q4', 'D')),
         ]),
     ]
-    print("Inserted program's id:", data_base.insert_program(program_1))
+    print("Inserted program's id:", data_base.insert_program_old(program_1))
     # for x in data_base.programs:
     #     print(x)
     # print(len(data_base.programs))
@@ -368,7 +383,7 @@ def example_save_user():
     )
     user_1.programs = ['1', '2', '3']
 
-    print("Inserted user's id:", data_base.insert_user(user_1))
+    print("Inserted user's id:", data_base.insert_user_old(user_1))
     # for x in data_base.users:
     #     print(x)
     # print(len(data_base.users))
@@ -382,11 +397,16 @@ def example_load_user(id_: str):
 
 
 if __name__ == "__main__":
-    table = example_load_program('1').to_json()['table_states']
-    print(json.dumps(table, indent=2))
-    out_table = get_out_table(table)
-    print(json.dumps(out_table, indent=2))
-    second = get_in_table(out_table)
-    print(second)
-    print(table == second)
-    print(json.dumps(table) == json.dumps(second))
+    # table = example_load_program('1').to_json()['table_states']
+    # print(json.dumps(table, indent=2))
+    # out_table = get_out_table(table)
+    # print(json.dumps(out_table, indent=2))
+    # second = get_in_table(out_table)
+    # print(second)
+    # print(table == second)
+    # print(json.dumps(table) == json.dumps(second))
+    # print(data_base.programs)
+    # example_save_program()
+    data_base = DataBase()
+    result = data_base.remove_program('1')
+    print(result)
