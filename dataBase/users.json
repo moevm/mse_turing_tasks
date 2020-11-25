@@ -1,0 +1,64 @@
+{
+  "users": [
+    {
+      "_id": 1,
+      "name": "Kirill",
+      "email": "qweqwe@mail.ru",
+      "password": "qwerty123",
+      "session": {
+        "matrix": [
+          ["0", "0", "0"],
+          ["0", "0", "0"],
+          ["0", "0", "0"]
+        ],
+        "last_position": {
+          "x": 1,
+          "y": 2
+        },
+        "table_states": [
+          {
+            "state": "q0",
+            "ways": [
+              {
+                "symbol": "a",
+                "action": {
+                  "symbol": "b",
+                  "state": "q0",
+                  "move": "r"
+                }
+              }
+            ]
+          },
+          {
+            "state": "q1",
+            "ways": [
+              {
+                "symbol": "a",
+                "action": {
+                  "symbol": "a",
+                  "state": "q1",
+                  "move": "r"
+                }
+              },
+              {
+                "symbol": "b",
+                "action": {
+                  "symbol": "a",
+                  "state": "q1",
+                  "move": "r"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "programs": [
+        "1",
+        "2",
+        "3"
+      ]
+    }
+  ]
+}
+
+
