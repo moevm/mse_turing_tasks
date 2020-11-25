@@ -126,7 +126,7 @@ class TuringMachine:
         except:
             return None
 
-        return {"write" : None, "writePos" : None, "newState" : stateOnStart, "read" : curRead, "readPos" : self.curPos}
+        return {"write" : None, "writePos" : None, "newState" : stateOnStart, "read" : curRead, "readPos" : self.curPos.array}
 
     def nextState(self):
         try:
@@ -149,7 +149,7 @@ class TuringMachine:
             return None
 
 
-        return {"write" : prevWrite, "writePos" : prevPos, "newState" : curStateName, "read" : curRead, "readPos" : curPos}
+        return {"write" : prevWrite, "writePos" : prevPos.array, "newState" : curStateName, "read" : curRead, "readPos" : curPos.array}
 
     def fullExecute(self, moves, states, field, stateOnStart, posOnStart):
         moves = copy.deepcopy(moves)
@@ -176,160 +176,3 @@ class TuringMachine:
             pass
 
         return field
-
-
-oneDimensionMoves = {"l" : [-1], "s" : [0], "r" : [1]}
-twoDimensionMoves = {"d" : [0, -1], "s" : [0, 0], "u" : [0, 1], "r" : [1, 0], "l" : [-1, 0]}
-
-twoDimensionField = [['0' for i in range(11)] for i in range(11)]
-langton = {
-            "u" : 
-                {
-                    "0" : 
-                        {
-                            "move" : "r", 
-                            "write" : "1",
-                            "state" : "r"
-                        },
-                    "1" : 
-                        {
-                            "move" : "l", 
-                            "write" : "0",
-                            "state" : "l"
-                        }
-                },
-            "r" : 
-                {
-                    "0" : 
-                        {
-                            "move" : "d", 
-                            "write" : "1",
-                            "state" : "d"
-                        },
-                    "1" : 
-                        {
-                            "move" : "u", 
-                            "write" : "0",
-                            "state" : "u"
-                        }
-                },
-            "d" : 
-                {
-                    "0" : 
-                        {
-                            "move" : "l", 
-                            "write" : "1",
-                            "state" : "l"
-                        },
-                    "1" : 
-                        {
-                            "move" : "r", 
-                            "write" : "0",
-                            "state" : "r"
-                        }
-                },
-            "l" : 
-                {
-                    "0" : 
-                        {
-                            "move" : "u", 
-                            "write" : "1",
-                            "state" : "u"
-                        },
-                    "1" : 
-                        {
-                            "move" : "d", 
-                            "write" : "0",
-                            "state" : "d"
-                        }
-                }
-        }
-
-states = {
-    "q0" : 
-    {
-        "a" :
-        {
-            "move" : "l", 
-            "write" : "b",
-            "state" : "q0"
-        },
-        "b" :
-        {
-            "move" : "l", 
-            "write" : "a",
-            "state" : "q1"
-        }
-    },
-    "q1" : 
-    {
-        "a" :
-        {
-            "move" : "l", 
-            "write" : "a",
-            "state" : "q1"
-        },
-        "b" :
-        {
-            "move" : "l", 
-            "write" : "a",
-            "state" : "q1"
-        }
-    }
-}
-
-"states" : [
-    {
-        "state" : "q0",
-        "symbols" :
-        [
-            {
-                "symbol" : "a",
-                "action" : 
-                {
-                    "symbol" : "b",
-                    "state" : "q0",
-                    "move" : "r"
-                }
-            },
-            {
-                "symbol" : "b",
-                "action" : 
-                {
-                    "symbol" : "a",
-                    "state" : "q1",
-                    "move" : "r"
-                }
-            }
-        ]
-    },
-    {
-        "state" : "q1",
-        "symbols" :
-        [
-            {
-                "symbol" : "a",
-                "action" : 
-                {
-                    "symbol" : "a",
-                    "state" : "q1",
-                    "move" : "r"
-                }
-            },
-            {
-                "symbol" : "b",
-                "action" : 
-                {
-                    "symbol" : "a",
-                    "state" : "q1",
-                    "move" : "r"
-                }
-            }
-        ]
-    }
-]
-
-field  = [i for i in "abababa"]
-machine = TuringMachine()
-result = machine.fullExecute(oneDimensionMoves, states, Field(1, len(field), values=field), "q0", [0])
-print(result)
