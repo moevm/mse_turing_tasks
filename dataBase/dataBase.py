@@ -269,11 +269,51 @@ class DataBase:
     def insert_program_old(self, program_: Program) -> str:
         return self.__programs.insert_one(Program(_program=program_).to_json()).inserted_id
 
-    def find_user(self, id_: str) -> User:
-        return User(_json=self.__users.find_one({'_id': id_}))
+    def insert_user(
+            self,
+            name: str,
+            email: str,
+            password: str,
+            session_field: List[List[str]],
+            session_position: List[int],
+            session_states: dict,
+            programs: List[int]
+    ):
+        user = {
+            "name": name,
+            "email": email,
+            "password": password,
+            "session": {
+                "matrix": session_field,
+                "last_position": {
+                    'x': session_position[0],
+                    'y': session_position[1] if len(session_position) == 2 else None},
+                'table_states': get_in_table(session_states)
+            },
+            "programs": programs
+        }
+        return self.__users.insert_one(user).inserted_id
 
-    def remove_user(self, id_: str):
-        return self.__users.delete_one({'_id': id_}).deleted_count
+    def find_user(self, email: str) -> dict:
+        user = self.__users.find_one({'email': email})
+        return {
+            "_id": user['_id'],
+            "name": user['name'],
+            "email": user['email'],
+            "password": user['password'],
+            "session": {
+                "matrix": user['session']['matrix'],
+                "last_position": [
+                    user['session']['last_position']['x'],
+                    user['session']['last_position']['y'],
+                ],
+                "table_states": get_out_table(user['session']['table_states'])
+            },
+            "programs": user['programs']
+        }
+
+    def remove_user(self, email: str):
+        return self.__users.delete_one({'email': email}).deleted_count
 
     def insert_program(self, field: List[List[str]], position: List[int], states: dict):
         program = {
