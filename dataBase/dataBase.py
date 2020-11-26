@@ -1,5 +1,4 @@
-import enum
-
+from bson import ObjectId
 import pymongo
 import json
 
@@ -348,13 +347,14 @@ class DataBase:
 
     def remove_program(self, email: str, id_: str):
         programs = self.find_user(email)['programs']
-        programs.remove(id_)
+        # print(programs)
+        programs.remove(ObjectId(id_))
         self.__users.update_one({'email': email}, {
             '$set': {
                 'programs': programs
             }
         })
-        return self.__programs.delete_one({'_id': id_}).deleted_count
+        return self.__programs.delete_one({'_id': ObjectId(id_)}).deleted_count
 
     @property
     def users(self) -> List[dict]:
@@ -462,6 +462,56 @@ if __name__ == "__main__":
     # print(json.dumps(table) == json.dumps(second))
     # print(data_base.programs)
     # example_save_program()
+    table_states = [
+        {
+          "state": "q0",
+          "ways": [
+            {
+              "symbol": "a",
+              "action": {
+                "symbol": "b",
+                "state": "q0",
+                "move": "r"
+              }
+            }
+          ]
+        },
+        {
+          "state": "q1",
+          "ways": [
+            {
+              "symbol": "a",
+              "action": {
+                "symbol": "a",
+                "state": "q1",
+                "move": "r"
+              }
+            },
+            {
+              "symbol": "b",
+              "action": {
+                "symbol": "a",
+                "state": "q1",
+                "move": "r"
+              }
+            }
+          ]
+        }
+    ]
+
     data_base = DataBase()
-    result = data_base.remove_program('1')
-    print(result)
+    # r = data_base.insert_program(
+    #     'qweqwe@mail.ru',
+    #     [
+    #         ["0", "0", "0"],
+    #         ["0", "0", "0"],
+    #         ["0", "0", "0"]
+    #     ],
+    #     [1, 3],
+    #     get_out_table(table_states)
+    # )
+    # print(r)
+    r2 = data_base.remove_program(
+        'qweqwe@mail.ru',
+        '5fbfcdcc05c2d4ae2fd02b8c'
+    )
