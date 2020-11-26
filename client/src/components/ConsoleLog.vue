@@ -1,6 +1,6 @@
 <template>
   <div class="console">
-    <li v-for="item in consoleString" :key="item.id">
+    <li v-for="item in consoleString" :key="item.id" class="text-black">
       {{ item }}
     </li>
   </div>

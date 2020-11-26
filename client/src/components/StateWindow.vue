@@ -1,39 +1,47 @@
 <template>
   <div class="state-window">
     <b-container>
-      <!--   finish the styles   -->
-      <b-button variant="invisible"></b-button>
-      <!--      -->
-      <div class="btn-group-vertical align-items-center"
-           v-for="vButton in buttonsHorizontal"
-           :key="vButton.id">
-        <b-button
-            variant="danger"
-            v-on:click="removeColumn(vButton)"
-        >-
-        </b-button>
-      </div>
-      <div class="table-vertical">
-        <b-button-group vertical>
-          <div class="align-items-center btn-group-vertical"
-               v-for="hButton in buttonsVertical"
-               :key="hButton.id">
-            <b-button
-                variant="primary"
-                v-on:click="removeRow(hButton)"
-                class="btn-sm"
-            >-
-            </b-button>
+      <b-row>
+        <div
+            style="width: 30px; height: 30px"
+        ></div>
+        <div class=" hor-bttn"
+             ref="vtcBttn"
+             v-for="vButton in buttonsHorizontal"
+             :key="vButton.id">
+          <b-button
+              variant="success"
+              style="width: 90px; "
+              v-on:click="removeColumn(vButton)"
+          >-
+          </b-button>
+        </div>
+      </b-row>
+      <b-row>
+        <div class="table-vertical">
+          <b-button-group vertical>
+            <div class=" "
+                 v-for="hButton in buttonsVertical"
+                 :key="hButton.id">
+              <b-button
+                  variant="success"
+                  v-on:click="removeRow(hButton)"
+                  style="height: 40px;width: 30px"
+              >-
+              </b-button>
+            </div>
+          </b-button-group>
+          <div id="dynamic-table">
+            <vue-table-dynamic
+                :params="params"
+                @cell-change="onCellChange"
+            ></vue-table-dynamic>
           </div>
-        </b-button-group>
+          <b-button @click="addColumn" type="submit" class="btn-sm">+</b-button>
+        </div>
+      </b-row>
 
-        <vue-table-dynamic
-            :params="params"
-            @cell-change="onCellChange"
-        ></vue-table-dynamic>
-        <b-button @click="addColumn" type="submit" class="btn-sm">+</b-button>
 
-      </div>
       <b-button @click="addRow" type="submit" class="btn-sm">+</b-button>
     </b-container>
   </div>
@@ -44,30 +52,42 @@ import {bus} from "@/main"
 
 export default {
   name: "StateWindow",
+  columnWidth: 100,
   data() {
     return {
       params: {
         data: [
-          ['state/symbol', 'a', 'b'],
-          ['q0', 'l, b, q0', 'l, a, q1'],
-          ['q1', 'l, a, q1', 'l, a, q1']
+          ['state/symbol', 'a', 'b', '\\s'],
+          ['q0', 'r, b, q0', 'r, a, q1', 'r, \\s, q0'],
+          ['q1', 'r, a, q1', 'r, a, q1', 'r, \\s, q1']
         ],
         border: true,
         edit: {
           row: [0, 1, 2]
         },
+        columnWidth: [{column: 0, width: 90}, {column: 1, width: 90}, {column: 2, width: 90}, {column: 3, width: 90}],
+        rowHeight: 40,
         scrollbar: 'hidden'
       },
-      buttonsHorizontal: [0, 1, 2],
-      buttonsVertical: [0, 1, 2]
+      buttonsHorizontal: [0, 1, 2, 3],
+      buttonsVertical: [0, 1, 2],
+
     }
+  },
+  created() {
+    this.resizeButtons()
   },
   mounted() {
     bus.$on('loadTable', () => {
       bus.$emit('tableChanged', this.params.data)
     })
+    this.resizeButtons()
   },
   methods: {
+    resizeButtons() {
+      // this.buttonSizeHorizontal.width = `${document.getElementById('dynamic-table').clientWidth / this.buttonsHorizontal.length}px`
+      // this.buttonSizeHorizontal.height = `${document.getElementById('dynamic-table').clientHeight / this.buttonsVertical.length}px`
+    },
     onCellChange(rowIndex, columnIndex, data) {
       this.params.data[rowIndex][columnIndex] = data
       bus.$emit('tableChanged', this.params.data)
@@ -77,16 +97,15 @@ export default {
         this.params.data.push([...Array(this.params.data[0].length)]);
         this.params.edit.row.push(this.params.edit.row.length);
         this.buttonsVertical.push(this.buttonsVertical.length)
+        this.resizeButtons()
       }
     },
     removeRow(rowIndex) {
-      // console.log(parseInt(rowIndex), "row")
       if (this.params.data.length > 2) {
-        // console.log('before', this.params.data)
         this.params.data.splice(rowIndex, 1)
-        // console.log('after', this.params.data)
         this.params.edit.row.pop()
         this.buttonsVertical.pop()
+        this.resizeButtons()
       }
     },
     addColumn() {
@@ -95,6 +114,11 @@ export default {
           this.params.data[i].push("")
         }
         this.buttonsHorizontal.push(this.buttonsHorizontal.length)
+        this.params.columnWidth.push({
+          column: this.buttonsVertical.length - 1,
+          width: 90
+        })
+        this.resizeButtons()
       }
     },
     removeColumn(columnIndex) {
@@ -103,6 +127,8 @@ export default {
           this.params.data[i].splice(columnIndex, 1)
         }
         this.buttonsHorizontal.pop()
+        this.params.columnWidth.pop()
+        this.resizeButtons()
       }
     },
 
@@ -121,5 +147,14 @@ export default {
 
 .table-vertical {
   display: flex;
+}
+
+.hor-bttn {
+  /*border: black 1px solid;*/
+}
+
+#dynamic-table {
+  width: 100%;
+  min-height: 100%;
 }
 </style>
