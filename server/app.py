@@ -2,6 +2,7 @@ from flask import Flask, jsonify, request
 from flask_cors import CORS
 import turing
 import json
+import database
 
 DEBUG = True
 
@@ -9,19 +10,37 @@ app = Flask(__name__)
 app.config.from_object(__name__)
 CORS(app)
 
-class VirtualDB():
-    users = {}
+class cloudMongoDb():
+    mongo = database.DataBase()
     programs = {}
+    users = {}
     lastId = 0
+
+    def __init__(self):
+        self.mongo = database.DataBase()
+        for user in self.mongo.users:
+            self.users.update({user.get("email") : {"password": user.get("password"), 
+                                                  "name" : user.get("name"), 
+                                                  "programs" : []}})
+
     def createUser(self, email: str, password: str, name: str) -> bool:
-        if(email not in self.users):
-            self.users.update({email : {"password" : password, "name" : name, "programs" : []}})
-            return True
-        else:
+        try:
+            if(email not in self.users):
+                self.mongo.insert_user(name, email, password, [" "], [0], "", [])
+                self.users.update({email : {"password": password, 
+                                                    "name" : name, 
+                                                    "programs" : []}})
+                return True
+            else:
+                return False
+        except:
             return False
 
     def findUser(self, email: str) -> {}:
-        return self.users.get(email)
+        try:
+            return self.users.get(email)
+        except:
+            return None
 
     def saveProgram(self, email: str, program) -> str:
         user = self.users.get(email)
@@ -53,7 +72,7 @@ class SessionsManager():
     def getSession(self, token: str) -> {}:
         return self.sessions.get(token)
 
-db = VirtualDB()
+db = cloudMongoDb()
 sessions = SessionsManager()
 
 @app.route('/register', methods=['POST'])
@@ -324,4 +343,5 @@ def renewToken():
     else:
         return None, 400
 
-app.run()
+if __name__ == "__main__":
+    app.run()
