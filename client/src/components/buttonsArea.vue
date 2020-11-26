@@ -4,10 +4,10 @@
       <b-row class="text-center py-3">
 
         <b-col>
-          <b-button class="change" size="sm" variant="warning">Change dimension</b-button>
+          <b-button @click="changeDimension" class="change">Change dimension</b-button>
         </b-col>
         <b-col>
-          <b-button @click="startMachine" size="sm" class="start" variant="success">Start/Continue</b-button>
+          <b-button @click="startMachine" class="start" variant="success">Start/Continue</b-button>
         </b-col>
       </b-row>
 
@@ -16,7 +16,8 @@
           <b-button class="openFile">Open file</b-button>
         </b-col>
         <b-col>
-          <b-button class="Stop" variant="danger">Stop</b-button>
+          <b-button class="step" variant="success">Step</b-button>
+
         </b-col>
       </b-row>
 
@@ -25,7 +26,7 @@
           <b-button class="save">Save file</b-button>
         </b-col>
         <b-col>
-          <b-button class="step" variant="primary">Step</b-button>
+          <b-button class="Stop" variant="danger">Stop</b-button>
         </b-col>
       </b-row>
     </b-container>
@@ -41,14 +42,19 @@ export default {
   name: "buttonsArea",
   data() {
     return {
+      api: 'https://wintari.pythonanywhere.com',
+      // api: 'http://127.0.0.1:5000',
       response: {},
       errors: [],
-      ribbonText: 'abababa',
+
+      ribbonText: ' abababa',
+      matrix: [],
       oneDimension: true,
       table: "",
       fieldSize: 0,
-      startPosition: "",
+      startPosition: [0],
       serverRequest: {
+        "token": '',
         "moves": {},
         "pos": [],
         "state": "",
@@ -60,7 +66,8 @@ export default {
         }
       },
       example: {
-        "moves": {"d": [0, -1], "s": [0, 0], "u": [0, 1], "r": [1, 0], "l": [-1, 0]},
+        'token': '0',
+        "moves": {"u": [0, -1], "s": [0, 0], "d": [0, 1], "r": [1, 0], "l": [-1, 0]},
         "pos": [5, 5],
         "state": "u",
         "machine": {
@@ -131,13 +138,21 @@ export default {
               "size": 11,
               "filler": "0"
             }
-      }
+      },
+      //
+
     }
   },
+  created() {
+
+  },
   mounted() {
+    bus.$on('startPosition', data => {
+      this.startPosition = data.point;
+    })
+
     bus.$on('ribbonChanged', data => {
       this.ribbonText = data
-      // console.log("ribbonChanged")
     })
 
     bus.$on('matrixChanged', data => {
@@ -147,94 +162,122 @@ export default {
 
     bus.$on('tableChanged', data => {
       this.table = data;
-      // console.log("tableChanged")
     })
 
     bus.$on('changeDimension', data => {
       this.oneDimension = data !== "2d";
     })
+
+    bus.$on('login', data => {
+      this.token = data.token;
+    })
+
+    bus.$on('loadMatrix', data => {
+      this.matrix = data.matrix
+    })
   },
   methods: {
+    clearData() {
+      this.serverRequest.moves = {}
+      this.serverRequest.state = ''
+      this.serverRequest.machine = {}
+      this.serverRequest.fieldData.values = []
+
+    },
+    changeDimension() {
+      bus.$emit("dimensionChanged", {oneDimension: !this.oneDimension})
+      this.oneDimension = !this.oneDimension
+    },
     fillRequest() {
       bus.$emit('loadTable')
       if (this.oneDimension) {
-        this.serverRequest.fieldData.dimensions = 1
-        this.serverRequest.fieldData.size = this.ribbonText.length
-        this.serverRequest.moves = {"l": [-1], r: [1], s: [0]}
-        this.serverRequest.fieldData.values = this.ribbonText.split("")
-        // change later
-        this.serverRequest.pos = [0]
-      } else {
-        this.serverRequest.fieldData.dimensions = 2
-        this.serverRequest.fieldData.size = this.fieldSize
-        this.serverRequest.moves = {"d": [0, -1], "s": [0, 0], "u": [0, 1], "r": [1, 0], "l": [-1, 0]}
-        this.serverRequest.pos = this.startPosition.split(", ").map(parseInt)
-        for (let i = 0; i < this.fieldSize; i++) {
-          this.serverRequest.fieldData.values.push([...Array(this.fieldSize)].map(() => {
-            return 0
-          }))
+        this.serverRequest.moves = {'l': [-1], 'r': [1], 's': [0]}
+
+        this.serverRequest.fieldData = {
+          dimensions: 1,
+          size: this.ribbonText.length,
+          values: Array(...this.ribbonText.split(""))
         }
-        this.serverRequest.fieldData.filler = 0
+        console.log(this.ribbonText.split(""))
+      } else {
+        bus.$emit('getMatrix')
+        this.serverRequest.fieldData = {
+          dimensions: 2,
+          size: this.matrix.length,
+          values: this.matrix
+        }
+        this.serverRequest.moves = {"u": [0, -1], "s": [0, 0], "d": [0, 1], "r": [1, 0], "l": [-1, 0]}
       }
+      this.serverRequest.pos = this.startPosition
 
       for (let i = 1; i < this.table.length; i++) {
         this.serverRequest.machine[this.table[i][0]] = {}
         for (let j = 1; j < this.table[0].length; j++) {
-          let splitted = this.table[i][j].split(", ")
-          // console.log(splitted, this.table[i][j])
-          if (splitted.length !== 3) {
+          let splitted = this.table[i][j].split(",")
+          if (splitted.length !== 3 || splitted[0].length != 1 && splitted[1].trim() !== '\\s') {
             throw new TypeError("incorrect table filling")
           }
-
-          this.serverRequest.machine[this.table[i][0]][this.table[0][j]] = {
+          let y = this.table[i][0] === "\\s" ? ' ' : this.table[i][0]
+          let x = this.table[0][j] === "\\s" ? ' ' : this.table[0][j]
+          this.serverRequest.machine[y][x] = {
             "move": splitted[0],
-            "write": splitted[1],
-            "state": splitted[2]
+            "write": splitted[1].trim() === "\\s" ? ' ' : splitted[1].trim(),
+            "state": splitted[2].trim()
           }
-          // console.log(this.serverRequest.machine[this.table[i][0]][this.table[0][j]])
         }
       }
 
       this.serverRequest.state = this.table[1][0]
-
+      this.serverRequest.token = localStorage.getItem('token')
+      console.log('fieldData', this.serverRequest.fieldData)
+      console.log('values', this.serverRequest.fieldData.values)
+      console.log('moves', this.serverRequest.moves)
+      console.log('machine', this.serverRequest.machine)
+      console.log('state', this.serverRequest.state)
+      console.log('pos', this.serverRequest.pos)
+      console.log('token', this.serverRequest.token)
     },
     startMachine() {
-      // example request
+      // bus.$emit("draw scene", {dimension: true, body: 'this.response.values'});
       try {
-        // console.log(this.table)
         this.fillRequest()
-        // console.log(this.serverRequest)
+        this.example.token = localStorage.getItem('token')
         bus.$emit("clicked", "запущен полный прогон машины");
-        axios.post('https://wintari.pythonanywhere.com/session/runbpc',
-            this.serverRequest,
-            {
+        console.log(`${this.api}/session/runbpc`)
+        axios.post(`${this.api}/session/runbpc`,
+            this.serverRequest
+            , {
               headers: {
                 'Content-Type': 'application/json'
-              }
+              },
             }
         )
             .then(response => {
+              console.log('get response')
               this.response = response.data;
               console.log(this.response)
               bus.$emit("getAnswer", "получен ответ от сервера");
               if (this.response.dimensions === 1) {
                 bus.$emit("getAnswer", this.response.values.join(""));
               } else {
-                for(let i = 0; i < this.response.size; i++) {
+                for (let i = 0; i < this.response.size; i++) {
                   bus.$emit("getAnswer", this.response.values[i].join(""));
                 }
               }
-
-              // console.log(this.response)
-              // bus.$emit("draw scene", this.response.values);
+              bus.$emit("drawScene", {dimension: this.oneDimension, body: this.response.values});
             })
             .catch(e => {
               console.error(e)
-              this.errors.push(e)
+              console.error(e.name)
+              console.error(e.message)
+              this.errors.push(e.stack)
+              bus.$emit("clicked", "нет ответа от сервера");
             })
       } catch (e) {
         bus.$emit("clicked", "таблица заполнена не правильно");
-        console.error(e)
+        console.error(e.name)
+      } finally {
+        this.clearData()
       }
     }
   }
@@ -243,8 +286,13 @@ export default {
 
 <style scoped>
 .buttons {
-  border: 2px solid #000000;
-  min-width: 35vh;
-  height: 35vh;
+  /*border: 2px solid #000000;*/
+  min-width: 45vh;
+  /*height: 35vh;*/
+}
+
+.start, .change, .openFile, .Stop, .save, .step {
+  width: 170px;
+  height: 30px;
 }
 </style>

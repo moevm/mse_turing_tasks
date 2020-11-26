@@ -1,6 +1,6 @@
 <template>
   <div class="upComp">
-    <StateWindow></StateWindow>
+    <StateWindow class="state-window"></StateWindow>
     <EndlessRibbon></EndlessRibbon>
   </div>
 </template>
@@ -22,5 +22,8 @@ export default {
   display: flex;
   min-height: 65vh;
   /*width: 100vh;*/
+}
+.state-window {
+  overflow: auto;
 }
 </style>
