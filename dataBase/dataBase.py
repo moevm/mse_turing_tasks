@@ -315,7 +315,7 @@ class DataBase:
     def remove_user(self, email: str):
         return self.__users.delete_one({'email': email}).deleted_count
 
-    def insert_program(self, field: List[List[str]], position: List[int], states: dict):
+    def insert_program(self, email: str, field: List[List[str]], position: List[int], states: dict):
         program = {
             'default_field': field,
             'default_position': {
@@ -324,7 +324,15 @@ class DataBase:
             },
             'table_states': get_in_table(states)
         }
-        return self.__programs.insert_one(program).inserted_id
+        program_id = self.__programs.insert_one(program).inserted_id
+        programs = self.find_user(email)['programs']
+        programs.append(program_id)
+        self.__users.update_one({'email': email}, {
+            '$set': {
+                'programs': programs
+            }
+        })
+        return program_id
 
     def find_program(self, id_: str) -> dict:
         program = self.__programs.find_one({'_id': id_})
@@ -338,7 +346,14 @@ class DataBase:
             "table_states": get_out_table(program['table_states'])
         }
 
-    def remove_program(self, id_: str):
+    def remove_program(self, email: str, id_: str):
+        programs = self.find_user(email)['programs']
+        programs.remove(id_)
+        self.__users.update_one({'email': email}, {
+            '$set': {
+                'programs': programs
+            }
+        })
         return self.__programs.delete_one({'_id': id_}).deleted_count
 
     @property
