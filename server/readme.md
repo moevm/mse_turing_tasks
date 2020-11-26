@@ -1,3 +1,4 @@
+
 # server
 
 ## Project setup
@@ -12,3 +13,6 @@ from app import app
 app.run()
 ```
 3) Execute python file
+=======
+Project setup
+pip install -r requirements.txt

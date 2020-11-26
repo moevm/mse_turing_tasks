@@ -126,7 +126,7 @@ class TuringMachine:
         except:
             return None
 
-        return {"write" : None, "writePos" : None, "newState" : stateOnStart, "read" : curRead, "readPos" : self.curPos}
+        return {"write" : None, "writePos" : None, "newState" : stateOnStart, "read" : curRead, "readPos" : self.curPos.array}
 
     def nextState(self):
         try:
@@ -149,7 +149,7 @@ class TuringMachine:
             return None
 
 
-        return {"write" : prevWrite, "writePos" : prevPos, "newState" : curStateName, "read" : curRead, "readPos" : curPos}
+        return {"write" : prevWrite, "writePos" : prevPos.array, "newState" : curStateName, "read" : curRead, "readPos" : curPos.array}
 
     def fullExecute(self, moves, states, field, stateOnStart, posOnStart):
         moves = copy.deepcopy(moves)
