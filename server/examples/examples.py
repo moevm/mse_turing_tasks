@@ -1,6 +1,8 @@
 import requests
 import json
 
+api = "https://wintari.pythonanywhere.com"
+
 pos = [5, 5]
 state = "u"
 twoDimensionMoves = {"r" : [1, 0], "l" : [-1, 0], "u" : [0, 1], "d" : [0, -1]}
@@ -82,12 +84,12 @@ automatData = {"moves" : twoDimensionMoves,
 
 def reg_example():
     data = {"email" : email, "password" : password, "name" : "example"}
-    response = requests.post("http://127.0.0.1:5000/register", data=json.dumps(data))
+    response = requests.post(api + "/register", data=json.dumps(data))
     print(response.content)
 
 def get_token_example():
     data = {"email" : email, "password" : password}
-    response = requests.post("http://127.0.0.1:5000/login", data=json.dumps(data))
+    response = requests.post(api + "/login", data=json.dumps(data))
     content = response.json()
 
     token = content.get("token")
@@ -100,12 +102,12 @@ def saving_example(token):
     data = {"token" : token}
     data.update(automatData)
 
-    response = requests.post("http://127.0.0.1:5000/session/savebpc", data=json.dumps(data))
+    response = requests.post(api + "/session/savebpc", data=json.dumps(data))
     print(response.content)
 
 def getting_bpc_list_example(token):
     data = {"token" : token}
-    response = requests.post("http://127.0.0.1:5000/session/blueprints", data=json.dumps(data))
+    response = requests.post(api + "/session/blueprints", data=json.dumps(data))
     content = response.json()
     print(content)
 
@@ -115,7 +117,7 @@ def loading_example(token):
     blueprints = getting_bpc_list_example(token)
     if(len(blueprints)):
         data = {"token" : token, "id" : blueprints[0]}
-        response = requests.post("http://127.0.0.1:5000/session/loadbpc", data=json.dumps(data))
+        response = requests.post(api + "/session/loadbpc", data=json.dumps(data))
         content = response.json()
         print(content)
 
@@ -123,14 +125,14 @@ def deleting_example(token):
     blueprints = getting_bpc_list_example(token)
     if(len(blueprints)):
         data = {"token" : token, "id" : blueprints[0]}
-        response = requests.post("http://127.0.0.1:5000/session/deletebpc", data=json.dumps(data))
+        response = requests.post(api + "/session/deletebpc", data=json.dumps(data))
         print(response.content)
 
 def run_example(token):
     data = {"token" : token}
     data.update(automatData)
 
-    response = requests.post("http://127.0.0.1:5000/session/runbpc", data=json.dumps(data))
+    response = requests.post(api + "/session/runbpc", data=json.dumps(data))
     content = response.json()
     print(content)
 
@@ -138,21 +140,21 @@ def debug_example(token):
     data = {"token" : token}
     data.update(automatData)
     
-    response = requests.post("http://127.0.0.1:5000/session/debug/start", data=json.dumps(data))
+    response = requests.post(api + "/session/debug/start", data=json.dumps(data))
     content = response.json()
     nextData = {"token" : token}
     while(content):
         print(content)
 
-        response = requests.post("http://127.0.0.1:5000/session/debug/next", data=json.dumps(nextData))
+        response = requests.post(api + "/session/debug/next", data=json.dumps(nextData))
         content = response.json()
 
 if __name__ == "__main__":
     reg_example()
     token = get_token_example()
 
-    #saving_example(token)
-    #loading_example(token)
-    #deleting_example(token)
-    #debug_example(token)
-    #run_example(token)
+    saving_example(token)
+    loading_example(token)
+    deleting_example(token)
+    run_example(token)
+    debug_example(token)
