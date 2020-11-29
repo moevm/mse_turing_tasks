@@ -42,8 +42,8 @@ export default {
   name: "buttonsArea",
   data() {
     return {
-      api: 'https://wintari.pythonanywhere.com',
-      // api: 'http://127.0.0.1:5000',
+      //api: 'https://wintari.pythonanywhere.com',
+      api: 'http://127.0.0.1:5000',
       response: {},
       errors: [],
 
