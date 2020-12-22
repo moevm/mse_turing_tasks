@@ -4,29 +4,54 @@
       <b-row class="text-center py-3">
 
         <b-col>
-          <b-button @click="changeDimension" class="change">Change dimension</b-button>
+          <b-button
+              @click="changeDimension"
+              class="change"
+          >Change dimension
+          </b-button>
         </b-col>
         <b-col>
-          <b-button @click="startMachine" class="start" variant="success">Start/Continue</b-button>
+          <b-button
+              @click="startMachine"
+              class="start"
+              variant="success"
+          >Run
+          </b-button>
         </b-col>
       </b-row>
 
       <b-row class="text-center py-3">
         <b-col>
-          <b-button class="openFile">Open file</b-button>
+          <b-button
+              class="openFile"
+          >Open file
+          </b-button>
         </b-col>
         <b-col>
-          <b-button class="step" variant="success">Step</b-button>
+          <b-button
+              class="step"
+              variant="success"
+              @click="debug"
+          >Start/Step
+          </b-button>
 
         </b-col>
       </b-row>
 
       <b-row class="text-center py-3">
         <b-col>
-          <b-button class="save">Save file</b-button>
+          <b-button
+              class="save"
+          >Save file
+          </b-button>
         </b-col>
         <b-col>
-          <b-button class="Stop" variant="danger">Stop</b-button>
+          <b-button
+              class="Stop"
+              variant="danger"
+              @click="stopDebug"
+          >Stop
+          </b-button>
         </b-col>
       </b-row>
     </b-container>
@@ -42,8 +67,8 @@ export default {
   name: "buttonsArea",
   data() {
     return {
-      api: 'https://wintari.pythonanywhere.com',
-      // api: 'http://127.0.0.1:5000',
+      // api: 'https://wintari.pythonanywhere.com',
+      api: 'http://127.0.0.1:5000',
       response: {},
       errors: [],
 
@@ -65,6 +90,8 @@ export default {
           "values": []
         }
       },
+      changed: true,
+      started: false,
       example: {
         'token': '0',
         "moves": {"u": [0, -1], "s": [0, 0], "d": [0, 1], "r": [1, 0], "l": [-1, 0]},
@@ -139,8 +166,6 @@ export default {
               "filler": "0"
             }
       },
-      //
-
     }
   },
   created() {
@@ -198,7 +223,6 @@ export default {
           size: this.ribbonText.length,
           values: Array(...this.ribbonText.split(""))
         }
-        console.log(this.ribbonText.split(""))
       } else {
         bus.$emit('getMatrix')
         this.serverRequest.fieldData = {
@@ -229,35 +253,105 @@ export default {
 
       this.serverRequest.state = this.table[1][0]
       this.serverRequest.token = localStorage.getItem('token')
-      console.log('fieldData', this.serverRequest.fieldData)
-      console.log('values', this.serverRequest.fieldData.values)
-      console.log('moves', this.serverRequest.moves)
-      console.log('machine', this.serverRequest.machine)
-      console.log('state', this.serverRequest.state)
-      console.log('pos', this.serverRequest.pos)
-      console.log('token', this.serverRequest.token)
+      // console.log('fieldData', this.serverRequest.fieldData)
+      // console.log('values', this.serverRequest.fieldData.values)
+      // console.log('moves', this.serverRequest.moves)
+      // console.log('machine', this.serverRequest.machine)
+      // console.log('state', this.serverRequest.state)
+      // console.log('pos', this.serverRequest.pos)
+      // console.log('token', this.serverRequest.token)
     },
+
+    stopDebug(){
+      this.started = false
+      bus.$emit('end')
+    },
+
+    debug() {
+      try {
+
+        if(!this.started) {
+          this.fillRequest();
+          this.started = true
+          bus.$emit('started')
+          axios.post(`${this.api}/session/debug/start`,
+              this.serverRequest
+              , {
+                headers: {
+                  'Content-Type': 'application/json'
+                }
+              })
+              .then(response => {
+                console.log("start", response)
+                // bus.$emit("drawScene", {dimension: this.oneDimension, body: this.response.values});
+              })
+              .catch(e => {
+                console.error(e)
+                this.errors.push(e.stack)
+                this.started = false
+                bus.$emit('end')
+                bus.$emit("clicked", "нет ответа от сервера");
+              })
+
+        } else {
+          axios.post(`${this.api}/session/debug/next`,
+              {"token": localStorage['token']}
+              , {
+                headers: {
+                  'Content-Type': 'application/json'
+                }
+              })
+              .then(response => {
+                if (response.data === null) {
+                  this.started = false
+                  bus.$emit("end")
+
+                } else {
+                  bus.$emit('debug',  response.data)
+                }
+                // bus.$emit("drawScene", {dimension: this.oneDimension, body: this.response.values});
+              })
+              .catch(e => {
+                this.started = false
+                console.error(e)
+                console.error(e.name)
+                console.error(e.message)
+                this.errors.push(e.stack)
+                bus.$emit('end')
+
+                bus.$emit("clicked", "нет ответа от сервера");
+              })
+        }
+
+
+      } catch (e) {
+        bus.$emit("clicked", "таблица заполнена не правильно");
+        console.error(e.name)
+        bus.$emit('end');
+      } finally {
+        this.clearData()
+
+      }
+    },
+
     startMachine() {
       // bus.$emit("draw scene", {dimension: true, body: 'this.response.values'});
       try {
         this.fillRequest()
         this.example.token = localStorage.getItem('token')
         bus.$emit("clicked", "запущен полный прогон машины");
-        console.log(`${this.api}/session/runbpc`)
         axios.post(`${this.api}/session/runbpc`,
             this.serverRequest
             , {
               headers: {
                 'Content-Type': 'application/json'
               },
-            }
-        )
+            })
             .then(response => {
-              console.log('get response')
               this.response = response.data;
-              console.log(this.response)
               bus.$emit("getAnswer", "получен ответ от сервера");
               if (this.response.dimensions === 1) {
+                // console.log(this.response.values.join(""))
                 bus.$emit("getAnswer", this.response.values.join(""));
               } else {
                 for (let i = 0; i < this.response.size; i++) {

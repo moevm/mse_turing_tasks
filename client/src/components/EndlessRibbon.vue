@@ -1,18 +1,18 @@
 <template @blur="$emit('blur')">
   <div class="local">
-<!--    <b-row>-->
+    <!--    <b-row>-->
     <b-col class="text-center justify-content-md-center w3-border-red">
-        <b-form-spinbutton
-            @change="matrixChanged"
-            v-if="selected==='2d'"
-            id="x-step"
-            v-model="value_x"
-            min="2"
-            max="100"
-            step="1"
-        ></b-form-spinbutton>
-      </b-col>
-<!--    </b-row>-->
+      <b-form-spinbutton
+          @change="matrixChanged"
+          v-if="selected==='2d'"
+          id="x-step"
+          v-model="value_x"
+          min="2"
+          max="100"
+          step="1"
+      ></b-form-spinbutton>
+    </b-col>
+    <!--    </b-row>-->
     <div v-if="selected==='2d'">
       <v-stage
           id="canvasMatrix"
@@ -68,7 +68,7 @@
                   cornerRadius: 10,
                   stroke: 'black',
                   strokeWidth: 3,
-                  fill: item.color === 'white'? 'white':'green'
+                  fill: item.color
               }"
           ></v-rect>
           <v-text
@@ -103,7 +103,6 @@ export default {
         {value: '2d', text: 'Двумерная плоскость'}
       ],
       matrix: [],
-      // field: "",
       value_x: 8,
       ribbonText: " abababa",
       configKonvaMatrix: {
@@ -121,7 +120,9 @@ export default {
       },
       listMatrix: [],
       listRibbon: [],
-      index: 0
+      index: 0,
+      denyEdit: false,
+      debugIndex: 0
     }
   },
   created() {
@@ -149,16 +150,59 @@ export default {
       this.index = 0;
     })
 
+    bus.$on('started', () => {
+      this.denyEdit = true
+      this.debugIndex = this.index
+    })
+
+    bus.$on('end', () => {
+      this.denyEdit = false
+      if (this.selected === 'ribbon') {
+        this.listRibbon[this.debugIndex].color = 'white'
+        this.listRibbon[this.index].color = 'green'
+      } else {
+        this.listMatrix[this.debugIndex].color = 'white'
+        this.listMatrix[this.index].color = 'green'
+      }
+
+      this.debugIndex = 0
+    })
+
     bus.$on('getMatrix', () => {
       let matrix = Array()
-      for(let i = 0; i < this.value_x; i++) {
+      for (let i = 0; i < this.value_x; i++) {
         matrix[matrix.length] = [...Array(this.value_x)]
-        for(let j = 0; j < this.value_x; j++) {
+        for (let j = 0; j < this.value_x; j++) {
           matrix[i][j] = this.listMatrix[j + i * this.value_x].value
         }
       }
-      console.log(matrix)
+      // console.log(matrix)
       bus.$emit('loadMatrix', {matrix: matrix})
+    })
+
+    bus.$on('debug', data => {
+      if (this.selected === 'ribbon') {
+        // console.log(this.listRibbon)
+        // console.log(this.index)
+        // console.log(this.ribbonText)
+        // console.log(data.write)
+        // console.log("asd", this.debugIndex)
+        console.log(data)
+        this.listRibbon[this.debugIndex].color = 'white'
+        this.listRibbon[data.oldPos[0]].value = data.write
+        // this.listRibbon[data.newPos[0]].value = data.write
+        this.ribbonText = this.ribbonText.slice(0, data.oldPos[0]) + data.write + this.ribbonText.slice(data.oldPos[0] + 1)
+        console.log("after", `|${this.ribbonText}|`)
+        this.debugIndex = data.oldPos[0]
+        this.listRibbon[this.debugIndex].color = 'yellow'
+      } else {
+        console.log(data)
+        this.listMatrix[this.debugIndex].color = 'white'
+        this.listMatrix[data.oldPos[1] * this.value_x + data.oldPos[0]].value = data.write
+        this.debugIndex = data.oldPos[1] * this.value_x + data.oldPos[0]
+        this.listMatrix[data.oldPos[1] * this.value_x + data.oldPos[0]].color = 'yellow'
+
+      }
     })
 
     document.addEventListener('keyup', (event) => this.keyEvent(event))
@@ -170,7 +214,7 @@ export default {
       this.listMatrix = [];
       this.matrixText = {
         fontSize: 300 / this.value_x,
-        offset_x: 200 /this.value_x,
+        offset_x: 200 / this.value_x,
         offset_y: 100 / this.value_x
       }
       for (let y = 0; y < this.value_x; y++) {
@@ -188,7 +232,7 @@ export default {
       }
     },
     keyEvent(e) {
-      if (e.target.className === 'table-cell-content fill-width' || e.target.className === 'table-cell-content') {
+      if (e.target.className === 'table-cell-content fill-width' || e.target.className === 'table-cell-content' || this.denyEdit) {
         return
       }
       if (e.keyCode >= 37 && e.keyCode <= 40) {
@@ -267,7 +311,7 @@ export default {
           }
 
           if (e.keyCode === 8 && this.ribbonText.length !== 1) {
-            console.log(this.index, this.ribbonText.length)
+            // console.log(this.index, this.ribbonText.length)
             if (this.ribbonText.length - 1 === this.index) {
 
               this.ribbonText = this.ribbonText.slice(0, this.index)
@@ -283,7 +327,6 @@ export default {
           }
         }
       }
-
     },
     matrixChanged() {
       bus.$emit('matrixChanged', {
@@ -293,14 +336,20 @@ export default {
       this.createRectangles();
     },
     changeDimension() {
-      bus.$emit('changeDimension', this.selected)
-      this.selected !== '2d' ? this.createRibbon() : this.createRectangles();
-      this.index = 0
+      if (!this.denyEdit) {
+
+        bus.$emit('changeDimension', this.selected)
+        this.selected !== '2d' ? this.createRibbon() : this.createRectangles();
+        this.index = 0
+      }
     },
     ribbonChanged() {
-      bus.$emit('ribbonChanged', this.ribbonText)
-      this.value_x = this.ribbonText.length
-      this.createRibbon()
+      if (!this.denyEdit) {
+
+        bus.$emit('ribbonChanged', this.ribbonText)
+        this.value_x = this.ribbonText.length
+        this.createRibbon()
+      }
     },
     createRibbon() {
       this.listRibbon = []
@@ -314,35 +363,44 @@ export default {
           offset_y: 10,
           value: this.ribbonText[x],
           value_id: x + '/' + this.ribbonText[x],
-          color: x === this.index ? 'green' : 'white'
+          color: 'white'
         });
+        if (x === this.index) {
+          this.listRibbon[x].color = 'green'
+        }
       }
       this.configKonvaRibbon.width = 50 * this.listRibbon.length
       bus.$emit('ribbonChanged', this.ribbonText)
     },
     startPositionMatrixChanged(e) {
-      if (this.index < this.listMatrix.length) {
-        this.listMatrix[this.index].color = 'white'
+      if (!this.denyEdit) {
+
+        if (this.index < this.listMatrix.length) {
+          this.listMatrix[this.index].color = 'white'
+        }
+        this.index = e.target.index;
+
+        this.listMatrix[this.index].color = 'green';
+
+        let y = Math.floor(this.index / this.value_x);
+        let x = Math.floor(this.index % this.value_x);
+
+        bus.$emit('startPosition', {point: [x, y]})
       }
-      this.index = e.target.index;
-
-      this.listMatrix[this.index].color = 'green';
-
-      let y = Math.floor(this.index / this.value_x);
-      let x = Math.floor(this.index % this.value_x);
-
-      bus.$emit('startPosition', {point: [x, y]})
     },
     startPositionRibbonChanged(e) {
-      if (this.index < this.listRibbon.length) {
-        this.listRibbon[this.index].color = 'white';
-        this.index = e.target.index
-        this.listRibbon[this.index].color = 'green';
+      if (!this.denyEdit) {
 
-        bus.$emit('startPosition', {point: [this.index]})
-      } else {
-        this.index = 0;
-        bus.$emit('startPosition', {point: [this.index]})
+        if (this.index < this.listRibbon.length) {
+          this.listRibbon[this.index].color = 'white';
+          this.index = e.target.index
+          this.listRibbon[this.index].color = 'green';
+
+          bus.$emit('startPosition', {point: [this.index]})
+        } else {
+          this.index = 0;
+          bus.$emit('startPosition', {point: [this.index]})
+        }
       }
     },
     redraw() {
