@@ -29,7 +29,7 @@ export default {
 
 <style>
 .page {
-  background: #FFEFD5;
+  background: #FFFFFF;
   min-height: 100vh;
   overflow:hidden;
 }
