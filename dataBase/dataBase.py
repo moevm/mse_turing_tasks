@@ -34,6 +34,23 @@ def get_out_table(input_table):
     return states
 
 
+def get_in_programs(programs: Dict[str, str]) -> List[any]:
+    programs_json = []
+    for name, id_ in programs.keys():
+        programs_json.append({
+            'name': str(name),
+            'id': str(id_)
+        })
+    return programs_json
+
+
+def get_out_programs(programs: List[Dict[str, str]]) -> Dict[str, str]:
+    programs_dict = {}
+    for program in programs:
+        programs_dict[program['name']] = program['id']
+    return programs_dict
+
+
 class Position:
     def __init__(self, x: int = 0, y: int = 0):
         self.x: int = x
@@ -268,7 +285,7 @@ class DataBase:
             session_field: List[List[str]],
             session_position: List[int],
             session_states: dict,
-            programs: Dict[str, int]
+            programs: Dict[str, str]
     ):
         user = {
             "name": name,
@@ -281,7 +298,7 @@ class DataBase:
                     'y': session_position[1] if len(session_position) == 2 else None},
                 'table_states': get_in_table(session_states)
             },
-            "programs": programs
+            "programs": get_in_programs(programs)
         }
         return self.__users.insert_one(user).inserted_id
 
@@ -300,7 +317,7 @@ class DataBase:
                 ],
                 "table_states": get_out_table(user['session']['table_states'])
             },
-            "programs": user['programs']
+            "programs": get_out_programs(user['programs'])
         }
 
     def remove_user(self, email: str):
@@ -310,7 +327,7 @@ class DataBase:
             self.__programs.delete_one({'_id': program['_id']})
         return self.__users.delete_one({'email': email}).deleted_count
 
-    def insert_program(self, email: str, field: List[List[str]], position: List[int], states: dict):
+    def insert_program(self, email: str, name: str, field: List[List[str]], position: List[int], states: dict):
         program = {
             'default_field': field,
             'default_position': {
@@ -321,7 +338,7 @@ class DataBase:
         }
         program_id = self.__programs.insert_one(program).inserted_id
         programs = self.find_user(email)['programs']
-        programs.append(program_id)
+        programs.append({'name': name, 'id': program_id})
         self.__users.update_one({'email': email}, {
             '$set': {
                 'programs': programs
