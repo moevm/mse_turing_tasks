@@ -52,7 +52,6 @@ import {bus} from "@/main"
 
 export default {
   name: "StateWindow",
-  columnWidth: 100,
   data() {
     return {
       params: {
@@ -75,19 +74,52 @@ export default {
     }
   },
   created() {
-    this.resizeButtons()
   },
   mounted() {
     bus.$on('loadTable', () => {
       bus.$emit('tableChanged', this.params.data)
     })
-    this.resizeButtons()
+
+    bus.$on("setTable", data => {
+      this.params.data = []
+      this.params.data.push([])
+      let alphabet = [];
+      for (let i in data.table) {
+        for (let symbol in data.table[i]) {
+          if (symbol === ' ') {
+            alphabet.push('\\s')
+          } else {
+            alphabet.push(symbol)
+          }
+        }
+        break
+      }
+      this.params.data[0][0] = 'state/symbol'
+      for (let i = 0; i < alphabet.length; i++) {
+        this.params.data[0][i + 1] = alphabet[i]
+      }
+      for (let i in data.table) {
+        this.params.data.push([])
+        this.params.data[this.params.data.length - 1].push(i)
+        for (let symbol in data.table[i]) {
+          let cell = data.table[i][symbol]
+          this.params.data[this.params.data.length - 1].push(`${cell.move}, ${cell.write === ' ' ? '\\s' : cell.write}, ${cell.state}`)
+        }
+      }
+      this.params.edit.row = []
+      this.buttonsHorizontal = []
+      this.buttonsVertical = []
+      for (let i = 0; i < this.params.data[0].length; i++) {
+        this.params.columnWidth.push({column: i, width: 90})
+        this.buttonsHorizontal.push(i)
+      }
+      for (let i = 0; i < this.params.data.length; i++) {
+        this.params.edit.row.push(i)
+        this.buttonsVertical.push(i)
+      }
+    })
   },
   methods: {
-    resizeButtons() {
-      // this.buttonSizeHorizontal.width = `${document.getElementById('dynamic-table').clientWidth / this.buttonsHorizontal.length}px`
-      // this.buttonSizeHorizontal.height = `${document.getElementById('dynamic-table').clientHeight / this.buttonsVertical.length}px`
-    },
     onCellChange(rowIndex, columnIndex, data) {
       this.params.data[rowIndex][columnIndex] = data
       bus.$emit('tableChanged', this.params.data)
@@ -97,7 +129,6 @@ export default {
         this.params.data.push([...Array(this.params.data[0].length)]);
         this.params.edit.row.push(this.params.edit.row.length);
         this.buttonsVertical.push(this.buttonsVertical.length)
-        this.resizeButtons()
       }
     },
     removeRow(rowIndex) {
@@ -105,7 +136,6 @@ export default {
         this.params.data.splice(rowIndex, 1)
         this.params.edit.row.pop()
         this.buttonsVertical.pop()
-        this.resizeButtons()
       }
     },
     addColumn() {
@@ -118,7 +148,6 @@ export default {
           column: this.buttonsVertical.length - 1,
           width: 90
         })
-        this.resizeButtons()
       }
     },
     removeColumn(columnIndex) {
@@ -128,7 +157,6 @@ export default {
         }
         this.buttonsHorizontal.pop()
         this.params.columnWidth.pop()
-        this.resizeButtons()
       }
     },
 

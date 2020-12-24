@@ -128,7 +128,6 @@ export default {
       },
       showError: false,
       debugMode: false,
-      // change on your host location
       api: 'http://127.0.0.1:5000',
       token: ''
     }
@@ -153,8 +152,7 @@ export default {
               headers: {
                 'Content-Type': 'application/json'
               }
-            }
-        )
+            } )
             .then((res) => {
               console.log(res)
               bus.$emit('login', res.data.token)
@@ -168,8 +166,7 @@ export default {
                   this.form.password = ''
                   this.showError = true;
                   console.error(error);
-                }
-            )
+            })
       } else {
         router.push('/main');
       }
@@ -194,8 +191,7 @@ export default {
                   this.form.password = ''
                   this.form.name = ''
                   console.error(error);
-                }
-            )
+            })
       } else {
         console.log('reg')
       }

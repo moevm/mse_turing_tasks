@@ -1,24 +1,25 @@
 <template @blur="$emit('blur')">
   <div class="local">
-<!--    <b-row>-->
+    <!--    <b-row>-->
     <b-col class="text-center justify-content-md-center w3-border-red">
-        <b-form-spinbutton
-            @change="matrixChanged"
-            v-if="selected==='2d'"
-            id="x-step"
-            v-model="value_x"
-            min="2"
-            max="100"
-            step="1"
-        ></b-form-spinbutton>
-      </b-col>
-<!--    </b-row>-->
+      <b-form-spinbutton
+          @change="matrixChanged"
+          v-if="selected==='2d'"
+          id="x-step"
+          v-model="value_x"
+          min="2"
+          max="100"
+          step="1"
+      ></b-form-spinbutton>
+    </b-col>
+    <!--    </b-row>-->
     <div v-if="selected==='2d'">
       <v-stage
           id="canvasMatrix"
           ref="stage"
           :config="configKonvaMatrix"
           @click="startPositionMatrixChanged"
+          v-on:dblclick="setDebugCell"
       >
         <v-layer ref="layer">
           <v-rect
@@ -55,6 +56,7 @@
           ref="stageRibbon"
           :config="configKonvaRibbon"
           @click="startPositionRibbonChanged"
+          v-on:dblclick="setDebugCell"
       >
         <v-layer ref="layer">
           <v-rect
@@ -68,7 +70,7 @@
                   cornerRadius: 10,
                   stroke: 'black',
                   strokeWidth: 3,
-                  fill: item.color === 'white'? 'white':'green'
+                  fill: item.color
               }"
           ></v-rect>
           <v-text
@@ -103,7 +105,7 @@ export default {
         {value: '2d', text: 'Двумерная плоскость'}
       ],
       matrix: [],
-      // field: "",
+      debugPoints: [],
       value_x: 8,
       ribbonText: " abababa",
       configKonvaMatrix: {
@@ -121,11 +123,12 @@ export default {
       },
       listMatrix: [],
       listRibbon: [],
-      index: 0
+      index: 0,
+      denyEdit: false,
+      debugIndex: 0
     }
   },
   created() {
-    // console.log(window.innerHeight, window.innerWidth)
   },
   mounted() {
     bus.$on('drawScene', data => {
@@ -134,6 +137,14 @@ export default {
         this.ribbonText = data.body.join("")
       } else {
         this.matrix = data.body
+      }
+      // eslint-disable-next-line no-prototype-builtins
+      if (data.hasOwnProperty('breakpoints')) {
+        this.debugPoints = data.breakpoints
+        console.log('bp', this.debugPoints)
+        if (data.newPos !== null) {
+          this.debugIndex = data.newPos
+        }
       }
       this.redraw()
     })
@@ -149,16 +160,110 @@ export default {
       this.index = 0;
     })
 
+    bus.$on('started', data => {
+      this.denyEdit = true
+      if (this.selected === 'ribbon') {
+        this.debugIndex = data.newPos
+      } else {
+        this.debugIndex = data.newPos[1] * this.value_x + data.newPos[0]
+      }
+    })
+
+    bus.$on('end', () => {
+      this.denyEdit = false
+      if (this.selected === 'ribbon') {
+        this.listRibbon[this.debugIndex].color = 'white'
+        this.listRibbon[this.index].color = 'green'
+        this.ribbonText = ''
+        for (let i = 0; i < this.listRibbon.length; i++) {
+          this.ribbonText += this.listRibbon[i].value
+        }
+        this.createRibbon()
+        bus.$emit('ribbonChanged', this.ribbonText)
+
+      } else {
+        console.log('here', this.debugIndex, this.index)
+        // if (this.debugIndex)
+        this.listMatrix[this.debugIndex].color = 'white'
+        this.listMatrix[this.index].color = 'green'
+        bus.$emit('getMatrix')
+      }
+      this.debugIndex = 0
+    })
+
     bus.$on('getMatrix', () => {
       let matrix = Array()
-      for(let i = 0; i < this.value_x; i++) {
+      for (let i = 0; i < this.value_x; i++) {
         matrix[matrix.length] = [...Array(this.value_x)]
-        for(let j = 0; j < this.value_x; j++) {
+        for (let j = 0; j < this.value_x; j++) {
           matrix[i][j] = this.listMatrix[j + i * this.value_x].value
         }
       }
-      console.log(matrix)
       bus.$emit('loadMatrix', {matrix: matrix})
+    })
+
+    bus.$on('stepByStep', data => {
+      try {
+        if (this.selected === 'ribbon') {
+          if (this.listRibbon[this.debugIndex].color === "orange") {
+            this.listRibbon[this.debugIndex].color = 'red'
+          } else {
+            this.listRibbon[this.debugIndex].color = 'white'
+          }
+
+          this.listRibbon[data.oldPos[0]].value = data.write
+
+          this.ribbonText = this.ribbonText.slice(0, data.oldPos[0]) + data.write + this.ribbonText.slice(data.oldPos[0] + 1)
+
+          this.debugIndex = data.oldPos[0]
+          if (this.listRibbon[this.debugIndex].color === "red") {
+            this.listRibbon[this.debugIndex].color = 'orange'
+          } else {
+            this.listRibbon[this.debugIndex].color = 'yellow'
+          }
+        } else {
+          if (this.debugIndex.length === 2) {
+            this.debugIndex = this.debugIndex[1] * this.value_x + this.debugIndex[0]
+          }
+
+          if (this.listMatrix[this.debugIndex].color === "orange") {
+            this.listMatrix[this.debugIndex].color = 'red'
+          } else {
+            this.listMatrix[this.debugIndex].color = 'white'
+          }
+
+          let point = data.oldPos[1] * this.value_x + data.oldPos[0]
+
+          this.listMatrix[point].value = data.write
+
+          if (this.listMatrix[point].color === "red") {
+            this.listMatrix[point].color = 'orange'
+            console.log('orange')
+          } else {
+            this.listMatrix[point].color = 'yellow'
+            console.log('yellow')
+          }
+          this.debugIndex = point
+          console.log("data", this.debugIndex)
+          for (let i = 0; i < this.debugPoints; i++) {
+            let loc_point = this.debugPoints[1] *this.value_x + this.debugPoints[0]
+            if (this.debugIndex === loc_point) {
+              this.listMatrix[loc_point].color = 'orange'
+            } else {
+              this.listMatrix[loc_point].color = 'yellow'
+            }
+          }
+          this.debugIndex = data.oldPos[1] * this.value_x + data.oldPos[0]
+
+        }
+      }catch (e) {
+        console.error(e)
+      }
+
+    })
+
+    bus.$on("getBreakpoints", () => {
+      bus.$emit("getBreakpointsAnswer", this.debugPoints)
     })
 
     document.addEventListener('keyup', (event) => this.keyEvent(event))
@@ -170,7 +275,7 @@ export default {
       this.listMatrix = [];
       this.matrixText = {
         fontSize: 300 / this.value_x,
-        offset_x: 200 /this.value_x,
+        offset_x: 200 / this.value_x,
         offset_y: 100 / this.value_x
       }
       for (let y = 0; y < this.value_x; y++) {
@@ -182,13 +287,16 @@ export default {
             y: y * widthMatrix / this.value_x,
             color: this.index === x + y * this.value_x ? 'green' : 'white',
             value: ' ',
-            // value_id: y + 'rectangle'
           });
         }
       }
+      // console.trace()
+      // console.log('change', this.debugPoints)
     },
     keyEvent(e) {
-      if (e.target.className === 'table-cell-content fill-width' || e.target.className === 'table-cell-content') {
+      console.log(e.target.className)
+      if (e.target.className === 'table-cell-content fill-width' || e.target.className === 'table-cell-content'
+          || this.denyEdit || e.target.className === 'form-control') {
         return
       }
       if (e.keyCode >= 37 && e.keyCode <= 40) {
@@ -245,16 +353,24 @@ export default {
           if (48 <= e.keyCode && e.keyCode <= 90 || e.keyCode === 32) {
             this.listMatrix[this.index].value = e.key
             if (this.listMatrix.length - 1 !== this.index) {
-              this.listMatrix[this.index].color = 'white'
+              if (this.listMatrix[this.index].color === 'green') {
+                this.listMatrix[this.index].color = 'white'
+              }
               this.index += 1
-              this.listMatrix[this.index].color = 'green'
+              if(this.listMatrix[this.index].color !=='red') {
+                this.listMatrix[this.index].color = 'green'
+              }
             }
 
           } else if (e.keyCode === 8 && this.index !== 0) {
             this.listMatrix[this.index].value = ' '
-            this.listMatrix[this.index].color = 'white'
+            if (this.listMatrix[this.index].color === 'green') {
+              this.listMatrix[this.index].color = 'white'
+            }
             this.index -= 1
-            this.listMatrix[this.index].color = 'green'
+            if(this.listMatrix[this.index].color !=='red') {
+              this.listMatrix[this.index].color = 'green'
+            }
           }
         } else {
           //ribbon changing
@@ -262,12 +378,11 @@ export default {
 
             this.ribbonText = this.ribbonText.slice(0, this.index + 1) + e.key + this.ribbonText.slice(this.index + 1)
             this.index += 1
-
+            this.debugPoints = []
             this.createRibbon()
           }
 
           if (e.keyCode === 8 && this.ribbonText.length !== 1) {
-            console.log(this.index, this.ribbonText.length)
             if (this.ribbonText.length - 1 === this.index) {
 
               this.ribbonText = this.ribbonText.slice(0, this.index)
@@ -283,24 +398,68 @@ export default {
           }
         }
       }
-
     },
+
+    setDebugCell(event){
+      if(this.denyEdit) {
+        return;
+      }
+      let index = event.target.index;
+      let point;
+      if (this.selected === '2d') {
+        point = [index % this.value_x, parseInt(index / this.value_x)]
+        console.log(point)
+        this.listMatrix[index].color = 'red'
+      } else {
+        point = [index]
+        this.listRibbon[index].color = 'red'
+      }
+      for(let i = 0; i < this.debugPoints.length; i++) {
+        if (this.debugPoints[i][0] === point[0] ) {
+          if (point.length === 2 && this.debugPoints[i][1] === point[1]) {
+            this.listMatrix[index].color = 'white'
+            console.log('delete bp')
+            this.debugPoints.splice(i, 1)
+            return
+          } else if (point.length === 1) {
+            this.listRibbon[index].color = 'white'
+            this.debugPoints.splice(i, 1)
+            return
+          }
+        }
+      }
+      this.debugPoints.push(point)
+    },
+
     matrixChanged() {
-      bus.$emit('matrixChanged', {
-        "fieldSize": this.value_x,
-        "startPosition": [0, 0]
-      })
-      this.createRectangles();
+      if (!this.denyEdit) {
+        bus.$emit('matrixChanged', {
+          "fieldSize": this.value_x,
+          "startPosition": [0, 0]
+        })
+        if (this.value_x * this.value_x !== this.matrix.length) {
+          this.debugPoints = []
+        }
+        this.createRectangles();
+      }
     },
     changeDimension() {
-      bus.$emit('changeDimension', this.selected)
-      this.selected !== '2d' ? this.createRibbon() : this.createRectangles();
-      this.index = 0
+      if (!this.denyEdit) {
+        bus.$emit('changeDimension', this.selected)
+        this.selected !== '2d' ? this.createRibbon() : this.createRectangles();
+        this.index = 0
+        this.debugIndex = 0
+        this.debugPoints = []
+        this.$emit('end')
+      }
     },
     ribbonChanged() {
-      bus.$emit('ribbonChanged', this.ribbonText)
-      this.value_x = this.ribbonText.length
-      this.createRibbon()
+      if (!this.denyEdit) {
+        bus.$emit('ribbonChanged', this.ribbonText)
+        this.value_x = this.ribbonText.length
+        this.createRibbon()
+        this.debugPoints = []
+      }
     },
     createRibbon() {
       this.listRibbon = []
@@ -314,35 +473,66 @@ export default {
           offset_y: 10,
           value: this.ribbonText[x],
           value_id: x + '/' + this.ribbonText[x],
-          color: x === this.index ? 'green' : 'white'
+          color: 'white'
         });
+        if (x === this.index) {
+          this.listRibbon[x].color = 'green'
+        }
+      }
+      for(let i = 0; i < this.debugPoints.length;i++) {
+        let point = this.debugPoints[i][0]
+        console.log(this.debugIndex)
+        if(point === this.debugIndex[0]) {
+          this.listRibbon[point].color = 'orange'
+        } else {
+          this.listRibbon[point].color = 'red'
+        }
       }
       this.configKonvaRibbon.width = 50 * this.listRibbon.length
+
       bus.$emit('ribbonChanged', this.ribbonText)
+      console.log(this.debugPoints)
+      // for ( let i = 0; i < this.debugPoints.length; i++) {
+      //   this.listRibbon[this.debugPoints[i][0]].color = 'red'
+      //   console.log(this.debugPoints[i][0])
+      // }
     },
     startPositionMatrixChanged(e) {
-      if (this.index < this.listMatrix.length) {
-        this.listMatrix[this.index].color = 'white'
+      if (!this.denyEdit) {
+
+        if (this.index < this.listMatrix.length) {
+          if (this.listMatrix[this.index].color === 'green') {
+            this.listMatrix[this.index].color = 'white'
+            console.log('changed start')
+          }
+        }
+        this.index = e.target.index;
+        if (this.listMatrix[this.index].color !== 'red') {
+          this.listMatrix[this.index].color = 'green';
+        }
+        let y = Math.floor(this.index / this.value_x);
+        let x = Math.floor(this.index % this.value_x);
+
+        bus.$emit('startPosition', {point: [x, y]})
       }
-      this.index = e.target.index;
-
-      this.listMatrix[this.index].color = 'green';
-
-      let y = Math.floor(this.index / this.value_x);
-      let x = Math.floor(this.index % this.value_x);
-
-      bus.$emit('startPosition', {point: [x, y]})
     },
     startPositionRibbonChanged(e) {
-      if (this.index < this.listRibbon.length) {
-        this.listRibbon[this.index].color = 'white';
-        this.index = e.target.index
-        this.listRibbon[this.index].color = 'green';
+      if (!this.denyEdit && e.type === 'click') {
+        if (this.index < this.listRibbon.length) {
+          if (this.listRibbon[this.index].color === 'green') {
+            this.listRibbon[this.index].color = 'white';
+          }
+          this.index = e.target.index
+          if (this.listRibbon[this.index].color !== 'red') {
+            this.listRibbon[this.index].color = 'green';
+          }
 
-        bus.$emit('startPosition', {point: [this.index]})
-      } else {
-        this.index = 0;
-        bus.$emit('startPosition', {point: [this.index]})
+
+          bus.$emit('startPosition', {point: [this.index]})
+        } else {
+          this.index = 0;
+          bus.$emit('startPosition', {point: [this.index]})
+        }
       }
     },
     redraw() {
@@ -354,6 +544,7 @@ export default {
             this.listMatrix[y * this.matrix.length + x].value = this.matrix[y][x];
           }
         }
+
       }
       if (this.selected === 'ribbon') {
         this.createRibbon();
