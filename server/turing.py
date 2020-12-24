@@ -113,24 +113,53 @@ class TuringMachine:
     field = None
     curState = None
     curPos = None
+    breakpoints = []
 
-    def startDebug(self, moves, states, field, stateOnStart, posOnStart):
+    def startDebug(self, moves, states, field, stateOnStart, posOnStart, breakpoints):
         self.moves = copy.deepcopy(moves)
         self.states = copy.deepcopy(states)
         self.field = copy.deepcopy(field)
         self.curState =  self.states.get(stateOnStart)
         self.curPos = Position(posOnStart)
+        if(breakpoints):
+            self.breakpoints = copy.deepcopy(breakpoints)
 
         try:
             curRead = self.field[self.curPos]
         except:
             return None
 
-        return {"write" : None, "writePos" : None, "newState" : stateOnStart, "read" : curRead, "readPos" : self.curPos}
+        return {"newState" : stateOnStart, "read" : curRead, "newPos" : self.curPos.array}
+
+    def skipToBreakpoint(self):
+        try:
+            letter = self.field[self.curPos]
+            action = self.curState.get(letter)
+
+            while(action):
+                if(self.curPos.array in self.breakpoints):
+                    break
+
+                self.field[self.curPos] = action.get("write")
+
+                self.curState = self.states.get(action.get("state"))
+
+                self.curPos += self.moves.get(action.get("move"))
+                    
+                letter = self.field[self.curPos]
+                action = self.curState.get(letter)
+        except Exception:
+           return {"values" : self.field.array, "dimensions" : self.field.dimensions, 
+                "size" : self.field.size, "newState" : None, 
+                "read" : None, "newPos" : None}
+
+        return {"values" : self.field.array, "dimensions" : self.field.dimensions, 
+                "size" : self.field.size, "newState" : self.curState, 
+                "read" : letter, "newPos" : self.curPos.array}
 
     def nextState(self):
         try:
-            prevPos = self.curPos
+            prevPos = copy.deepcopy(self.curPos)
             prevRead = self.field[self.curPos]
 
             action = self.curState.get(prevRead)
@@ -149,9 +178,10 @@ class TuringMachine:
             return None
 
 
-        return {"write" : prevWrite, "writePos" : prevPos, "newState" : curStateName, "read" : curRead, "readPos" : curPos}
+        return {"write" : prevWrite, "oldPos" : prevPos.array, "newState" : curStateName, "read" : curRead, "newPos" : curPos.array}
 
-    def fullExecute(self, moves, states, field, stateOnStart, posOnStart):
+    @staticmethod 
+    def fullExecute(moves, states, field, stateOnStart, posOnStart):
         moves = copy.deepcopy(moves)
         states = copy.deepcopy(states)
         field = copy.deepcopy(field)
@@ -175,4 +205,4 @@ class TuringMachine:
         except Exception:
             pass
 
-        return field
+        return {"values" : field.array, "dimensions" : field.dimensions, "size" : field.size}
