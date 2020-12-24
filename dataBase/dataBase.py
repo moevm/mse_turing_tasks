@@ -1,3 +1,4 @@
+import unittest
 from typing import List, Dict
 
 import pymongo
@@ -34,9 +35,9 @@ def get_out_table(input_table):
     return states
 
 
-def get_in_programs(programs: Dict[str, str]) -> List[any]:
+def get_in_programs(programs: Dict[str, str]) -> List[Dict[str, str]]:
     programs_json = []
-    for name, id_ in programs.keys():
+    for name, id_ in programs.items():
         programs_json.append({
             'name': str(name),
             'id': str(id_)
@@ -384,5 +385,109 @@ class DataBase:
         self.__programs.drop()
 
 
+class TestDBInterface(unittest.TestCase):
+    db_table_states = [
+        {
+            "state": "q0",
+            "ways": [
+                {
+                    "symbol": "a",
+                    "action": {
+                        "symbol": "b",
+                        "state": "q0",
+                        "move": "r"
+                    }
+                }
+            ]
+        },
+        {
+            "state": "q1",
+            "ways": [
+                {
+                    "symbol": "a",
+                    "action": {
+                        "symbol": "a",
+                        "state": "q1",
+                        "move": "r"
+                    }
+                },
+                {
+                    "symbol": "b",
+                    "action": {
+                        "symbol": "a",
+                        "state": "q1",
+                        "move": "r"
+                    }
+                }
+            ]
+        }
+    ]
+    server_table_states = {
+        'q0': {'a': {'move': 'r', 'write': 'b', 'state': 'q0'}},
+        'q1': {'a': {'move': 'r', 'write': 'a', 'state': 'q1'},
+               'b': {'move': 'r', 'write': 'a', 'state': 'q1'}}
+    }
+    server_programs = {
+        'name1': 'id1',
+        'name2': 'id2',
+        'name3': 'id3',
+        'name4': 'id4',
+        'name5': 'id5',
+        'name6': 'id6',
+    }
+    db_programs = [
+        {
+            'name': 'name1',
+            'id': 'id1',
+        },
+        {
+            'name': 'name2',
+            'id': 'id2',
+        },
+        {
+            'name': 'name3',
+            'id': 'id3',
+        },
+        {
+            'name': 'name4',
+            'id': 'id4',
+        },
+        {
+            'name': 'name5',
+            'id': 'id5',
+        },
+        {
+            'name': 'name6',
+            'id': 'id6',
+        },
+    ]
+
+    def test_get_in_programs(self):
+        self.assertEqual(
+            get_in_programs(TestDBInterface.server_programs),
+            TestDBInterface.db_programs
+        )
+
+    def test_get_out_programs(self):
+        self.assertEqual(
+            get_out_programs(
+                TestDBInterface.db_programs
+            ),
+            TestDBInterface.server_programs
+        )
+
+    def test_get_in_table(self):
+        self.assertEqual(
+            get_out_table(TestDBInterface.db_table_states),
+            TestDBInterface.server_table_states
+        )
+
+    def test_get_out_table(self):
+        self.assertEqual(
+            get_in_table(TestDBInterface.server_table_states),
+            TestDBInterface.db_table_states
+        )
+
+
 if __name__ == '__main__':
-    pass
+    unittest.main()
