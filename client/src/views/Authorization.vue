@@ -128,7 +128,6 @@ export default {
       },
       showError: false,
       debugMode: false,
-      // api: 'https://wintari.pythonanywhere.com',
       api: 'http://127.0.0.1:5000',
       token: ''
     }
