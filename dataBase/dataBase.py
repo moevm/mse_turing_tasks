@@ -1,16 +1,8 @@
-from bson import ObjectId
+from typing import List, Dict
+
 import pymongo
-import json
-
-from typing import List
 
 
-# class Direction(enum.Enum):
-#     STAY = 'N'
-#     LEFT = 'L'
-#     RIGHT = 'R'
-#     UP = 'U'
-#     DOWN = 'D'
 def get_in_table(states):
     """to DB"""
     table = []
@@ -252,12 +244,12 @@ class User:
 
 class DataBase:
     def __init__(self):
-        self.__client = pymongo.MongoClient(
-            "mongodb+srv://admin:admin@turingcluster.nzveq.mongodb.net/turing?retryWrites=true&w=majority")
-        self.__db = self.__client['turing']
-
-        # self.__client = pymongo.MongoClient('localhost', 27017)
+        # self.__client = pymongo.MongoClient(
+        #    "mongodb+srv://admin:admin@turingcluster.nzveq.mongodb.net/turing?retryWrites=true&w=majority")
         # self.__db = self.__client['turing']
+
+        self.__client = pymongo.MongoClient('localhost', 27017)
+        self.__db = self.__client['turing']
 
         self.__programs = self.__db['programs']
         self.__users = self.__db['users']
@@ -276,7 +268,7 @@ class DataBase:
             session_field: List[List[str]],
             session_position: List[int],
             session_states: dict,
-            programs: List[int]
+            programs: Dict[str, int]
     ):
         user = {
             "name": name,
@@ -312,6 +304,10 @@ class DataBase:
         }
 
     def remove_user(self, email: str):
+        user = self.__users.find_one({'email': email})
+        programs = user['programs']
+        for program in programs:
+            self.__programs.delete_one({'_id': program['_id']})
         return self.__users.delete_one({'email': email}).deleted_count
 
     def insert_program(self, email: str, field: List[List[str]], position: List[int], states: dict):
@@ -333,7 +329,9 @@ class DataBase:
         })
         return program_id
 
-    def find_program(self, id_: str) -> dict:
+    def find_program(self, email: str, name: str) -> dict:
+        user = self.__users.find_one({'email': email})
+        id_ = user['programs'][name]
         program = self.__programs.find_one({'_id': id_})
         return {
             "_id": program['_id'],
@@ -345,16 +343,15 @@ class DataBase:
             "table_states": get_out_table(program['table_states'])
         }
 
-    def remove_program(self, email: str, id_: str):
+    def remove_program(self, email: str, name: str):
         programs = self.find_user(email)['programs']
-        # print(programs)
-        programs.remove(ObjectId(id_))
+        _id = programs.pop(name)
         self.__users.update_one({'email': email}, {
             '$set': {
                 'programs': programs
             }
         })
-        return self.__programs.delete_one({'_id': ObjectId(id_)}).deleted_count
+        return self.__programs.delete_one({'_id': _id}).deleted_count
 
     @property
     def users(self) -> List[dict]:
@@ -370,148 +367,5 @@ class DataBase:
         self.__programs.drop()
 
 
-def example_save_program():
-    data_base = DataBase()
-    # print(len(data_base.programs))
-    # for x in data_base.programs:
-    #     print(x)
-
-    program_1 = Program()
-    program_1.id = '1'
-    program_1.default_position = Position(x=2, y=3)
-    program_1.default_field = [
-        ['2', '3', '4'],
-        ['5', '6', '7'],
-        ['10', '11', '12'],
-    ]
-    program_1.table_states = [
-        State('q0', [
-            Way('s1', Action('s2', 'q1', 'L')),
-            Way('s2', Action('s3', 'q2', 'R')),
-        ]),
-        State('q1', [
-            Way('s3', Action('s3', 'q3', 'U')),
-            Way('s4', Action('s4', 'q4', 'D')),
-        ]),
-    ]
-    print("Inserted program's id:", data_base.insert_program_old(program_1))
-    # for x in data_base.programs:
-    #     print(x)
-    # print(len(data_base.programs))
-
-
-def example_load_program(id_: str):
-    data_base = DataBase()
-    # for x in data_base.programs:
-    #     print(x)
-    return data_base.find_program(id_)
-
-
-def example_save_user():
-    data_base = DataBase()
-    # print(len(data_base.users))
-    # for x in data_base.users:
-    #     print(x)
-
-    user_1 = User()
-    user_1.id = '1'
-    user_1.name = 'Kirill'
-    user_1.email = 'qweqwe@mail.ru'
-    user_1.password = 'qwerty123'
-    user_1.session = Session(
-        [
-            ['2', '3', '4'],
-            ['5', '6', '7'],
-            ['10', '11', '12'],
-        ],
-        Position(4, 5),
-        [
-            State('q0', [
-                Way('s1', Action('s2', 'q1', 'L')),
-                Way('s2', Action('s3', 'q2', 'R')),
-            ]),
-            State('q1', [
-                Way('s3', Action('s3', 'q3', 'U')),
-                Way('s4', Action('s4', 'q4', 'D')),
-            ]),
-        ]
-    )
-    user_1.programs = ['1', '2', '3']
-
-    print("Inserted user's id:", data_base.insert_user_old(user_1))
-    # for x in data_base.users:
-    #     print(x)
-    # print(len(data_base.users))
-
-
-def example_load_user(id_: str):
-    data_base = DataBase()
-    # for x in data_base.users:
-    #     print(x)
-    print(data_base.find_user(id_))
-
-
-if __name__ == "__main__":
-    # table = example_load_program('1').to_json()['table_states']
-    # print(json.dumps(table, indent=2))
-    # out_table = get_out_table(table)
-    # print(json.dumps(out_table, indent=2))
-    # second = get_in_table(out_table)
-    # print(second)
-    # print(table == second)
-    # print(json.dumps(table) == json.dumps(second))
-    # print(data_base.programs)
-    # example_save_program()
-    table_states = [
-        {
-          "state": "q0",
-          "ways": [
-            {
-              "symbol": "a",
-              "action": {
-                "symbol": "b",
-                "state": "q0",
-                "move": "r"
-              }
-            }
-          ]
-        },
-        {
-          "state": "q1",
-          "ways": [
-            {
-              "symbol": "a",
-              "action": {
-                "symbol": "a",
-                "state": "q1",
-                "move": "r"
-              }
-            },
-            {
-              "symbol": "b",
-              "action": {
-                "symbol": "a",
-                "state": "q1",
-                "move": "r"
-              }
-            }
-          ]
-        }
-    ]
-
-    data_base = DataBase()
-    # r = data_base.insert_program(
-    #     'qweqwe@mail.ru',
-    #     [
-    #         ["0", "0", "0"],
-    #         ["0", "0", "0"],
-    #         ["0", "0", "0"]
-    #     ],
-    #     [1, 3],
-    #     get_out_table(table_states)
-    # )
-    # print(r)
-    r2 = data_base.remove_program(
-        'qweqwe@mail.ru',
-        '5fbfcdcc05c2d4ae2fd02b8c'
-    )
+if __name__ == '__main__':
+    pass
