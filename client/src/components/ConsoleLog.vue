@@ -1,5 +1,5 @@
 <template>
-  <div class="console">
+  <div class="console" id="container" ref="container">
     <li v-for="item in consoleString" :key="item.id" class="text-black">
       {{ item }}
     </li>
@@ -19,10 +19,14 @@ export default {
   mounted() {
     bus.$on('clicked', data => {
       this.consoleString.push(data)
+      var container = this.$refs.container;
+      container.scrollTop = container.scrollHeight + 120;
     })
 
     bus.$on('getAnswer', data => {
       this.consoleString.push(data)
+      var container = this.$refs.container;
+      container.scrollTop = container.scrollHeight + 120;
     })
   }
 }
