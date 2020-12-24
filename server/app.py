@@ -2,7 +2,7 @@ from flask import Flask, jsonify, request
 from flask_cors import CORS
 import turing
 import json
-import database
+import dataBase
 import multiprocessing
 
 DEBUG = True
@@ -11,85 +11,75 @@ app = Flask(__name__)
 app.config.from_object(__name__)
 CORS(app)
 
-class cloudMongoDb():
-    mongo = database.DataBase()
-    programs = {}
-    users = {}
-    lastId = 0
+class MongoDb():
+    mongo = dataBase.DataBase()
 
-    def __init__(self):
-        self.mongo = database.DataBase()
-        for user in self.mongo.users:
-            self.users.update({user.get("email") : {
-                                                  "password": user.get("password"), 
-                                                  "name" : user.get("name"), 
-                                                  "programs" : {}
-                                                  }
-            })
-
-    def createUser(self, email: str, password: str, name: str) -> bool:
+    def createUser(self, email, password, name):
+        if(self.findUser(email)):
+            return False
         try:
-            if(email not in self.users):
-                self.mongo.insert_user(name, email, password, [" "], [0], "", [])
-                self.users.update({email : {"password": password, 
-                                                    "name" : name, 
-                                                    "programs" : {}}})
-                return True
-            else:
-                return False
+            self.mongo.insert_user(name, email, password, [" "], [0], "", {})
+            return True
         except:
             return False
 
-    def findUser(self, email: str) -> {}:
+    def findUser(self, email):
         try:
-            return self.users.get(email)
+            return self.mongo.find_user(email)
         except:
             return None
 
-    def saveProgram(self, email: str, name:str, program) -> str:
-        user = self.users.get(email)
+    def saveProgram(self, email, name, program):
+        user = self.findUser(email)
         if(user):
-            userPrograms = user.get("programs")
-            programId = userPrograms.get(name)
-            if(programId):
-                self.programs.update({programId : program})
-            else:
-                self.programs.update({str(self.lastId) : program})
-                user.get("programs").update({name : str(self.lastId)})
-                self.lastId += 1
+            try:
+                self.mongo.remove_program(email, name)
+            except:
+                pass
+            self.mongo.insert_program(email, name, program["fieldData"], program["pos"], program["machine"])
+            
 
-    def loadProgram(self, email, name: str) -> {}:
-        user = self.users.get(email)
+    def loadProgram(self, email, name):
+        user = self.findUser(email)
         if(user):
-            userPrograms = user.get("programs")
-            programId = userPrograms.get(name)
-            if(programId):
-                return self.programs.get(programId)
+            program = self.mongo.find_program(email, name)
+            field = program["default_field"]
+            dimensions = 1
+            try:
+                field[0][0]
+                dimensions = 2
+            except:
+                pass
+            size = len(field)
+
+            return {"moves" : None, 
+                    "pos" : [0 for i in range(dimensions)], 
+                    "state" : list(program["table_states"].keys())[0],
+                    "machine" :  program["table_states"], 
+                    "fieldData": {"dimensions" : dimensions, 
+                                "size" : size,
+                                "values" : field}}
         
         return None
 
     def deleteProgram(self, email, name):
-        user = self.users.get(email)
+        user = self.findUser(email)
         if(user):
-            userPrograms = user.get("programs")
-            programId = userPrograms.get(name)
-            if(programId):
-                userPrograms.pop(name)
-                self.programs.pop(programId)
+            self.mongo.remove_program(email, name)
             
 class SessionsManager():
     lastId = 0
     sessions = {}
     
-    def createSession(self, email: str) -> str:
+    def createSession(self, email):
         self.sessions.update({str(self.lastId) : {"email" : email, "machine" : turing.TuringMachine()}})
         self.lastId += 1
         return str(self.lastId - 1)
 
-    def getSession(self, token: str) -> {}:
+    def getSession(self, token):
         return self.sessions.get(token)
 
-db = cloudMongoDb()
+db = MongoDb()
 sessions = SessionsManager()
 
 @app.route('/register', methods=['POST'])
@@ -181,7 +171,7 @@ def loadUserBpc():
             if(program):
                 bpc = program
             else:
-                error = "Wrong id"
+                error = "Wrong name"
                 status = 400
         else:
             error = "Wrong token"

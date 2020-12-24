@@ -94,6 +94,14 @@ automatData = {"moves" : twoDimensionMoves,
                                "size" : 11,
                                "values" : twoDimensionField}
                 }
+automatData2 = {"moves" : twoDimensionMoves, 
+               "pos" : pos, 
+               "state" : state, 
+               "machine" : timeout, 
+               "fieldData" : {"dimensions" : 2, 
+                               "size" : 11,
+                               "values" : twoDimensionField}
+                }
 
 def reg_example():
     data = {"email" : email, "password" : password, "name" : "example"}
@@ -114,6 +122,12 @@ def get_token_example():
 def saving_example(token):
     data = {"token" : token, "name" : "Test BPC"}
     data.update(automatData)
+
+    response = requests.post(api + "/session/savebpc", data=json.dumps(data))
+    print(response.content)
+
+    data = {"token" : token, "name" : "Test BPC"}
+    data.update(automatData2)
 
     response = requests.post(api + "/session/savebpc", data=json.dumps(data))
     print(response.content)
@@ -171,9 +185,8 @@ if __name__ == "__main__":
     reg_example()
     token = get_token_example()
 
-    #saving_example(token)
+    saving_example(token)
     #loading_example(token)
     #deleting_example(token)
-    #getting_bpc_list_example(token)
     #run_example(token)
-    debug_example(token, [[3, 6], [5, 9]])
+    #debug_example(token, [[3, 6], [5, 9]])

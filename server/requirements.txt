@@ -1,3 +1,4 @@
 flask
 flask_cors
 pymongo[srv]
+pymongo==3.11.0
