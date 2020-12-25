@@ -2,7 +2,8 @@ from flask import Flask, jsonify, request
 from flask_cors import CORS
 import turing
 import json
-import database
+import dataBase
+import multiprocessing
 
 DEBUG = True
 
@@ -10,69 +11,75 @@ app = Flask(__name__)
 app.config.from_object(__name__)
 CORS(app)
 
-class cloudMongoDb():
-    mongo = database.DataBase()
-    programs = {}
-    users = {}
-    lastId = 0
+class MongoDb():
+    mongo = dataBase.DataBase()
 
-    def __init__(self):
-        self.mongo = database.DataBase()
-        for user in self.mongo.users:
-            self.users.update({user.get("email") : {"password": user.get("password"), 
-                                                  "name" : user.get("name"), 
-                                                  "programs" : []}})
-
-    def createUser(self, email: str, password: str, name: str) -> bool:
+    def createUser(self, email, password, name):
+        if(self.findUser(email)):
+            return False
         try:
-            if(email not in self.users):
-                self.mongo.insert_user(name, email, password, [" "], [0], "", [])
-                self.users.update({email : {"password": password, 
-                                                    "name" : name, 
-                                                    "programs" : []}})
-                return True
-            else:
-                return False
+            self.mongo.insert_user(name, email, password, [" "], [0], "", {})
+            return True
         except:
             return False
 
-    def findUser(self, email: str) -> {}:
+    def findUser(self, email):
         try:
-            return self.users.get(email)
+            return self.mongo.find_user(email)
         except:
             return None
 
-    def saveProgram(self, email: str, program) -> str:
-        user = self.users.get(email)
+    def saveProgram(self, email, name, program):
+        user = self.findUser(email)
         if(user):
-            self.programs.update({str(self.lastId) : program})
-            user.get("programs").append(str(self.lastId))
-            self.lastId += 1
+            try:
+                self.mongo.remove_program(email, name)
+            except:
+                pass
+            self.mongo.insert_program(email, name, program["fieldData"], program["pos"], program["machine"])
+            
 
-            return str(self.lastId - 1)
-
-    def loadProgram(self, programId: str) -> {}:
-        return self.programs.get(programId)
-
-    def deleteProgram(self, email, programId):
-        user = self.users.get(email)
+    def loadProgram(self, email, name):
+        user = self.findUser(email)
         if(user):
-            self.programs.pop(programId)
-            user.get("programs").remove(programId)
+            program = self.mongo.find_program(email, name)
+            field = program["default_field"]
+            dimensions = 1
+            try:
+                field[0][0]
+                dimensions = 2
+            except:
+                pass
+            size = len(field)
+
+            return {"moves" : None, 
+                    "pos" : [0 for i in range(dimensions)], 
+                    "state" : list(program["table_states"].keys())[0],
+                    "machine" :  program["table_states"], 
+                    "fieldData": {"dimensions" : dimensions, 
+                                "size" : size,
+                                "values" : field}}
+        
+        return None
+
+    def deleteProgram(self, email, name):
+        user = self.findUser(email)
+        if(user):
+            self.mongo.remove_program(email, name)
             
 class SessionsManager():
     lastId = 0
     sessions = {}
     
-    def createSession(self, email: str) -> str:
+    def createSession(self, email):
         self.sessions.update({str(self.lastId) : {"email" : email, "machine" : turing.TuringMachine()}})
         self.lastId += 1
         return str(self.lastId - 1)
 
-    def getSession(self, token: str) -> {}:
+    def getSession(self, token):
         return self.sessions.get(token)
 
-db = cloudMongoDb()
+db = MongoDb()
 sessions = SessionsManager()
 
 @app.route('/register', methods=['POST'])
@@ -85,9 +92,9 @@ def register():
         name = data.get("name")
 
         if(db.createUser(email, password, name)):
-            return "User registered successfully", 200
+            return json.dumps("User registered successfully"), 200
         else:
-            return "User with this email already exist", 400
+            return json.dumps("User with this email already exist"), 400
 
     else:
         return None, 400
@@ -135,7 +142,7 @@ def getUserBpcs():
         if(session):
             email = session.get("email")
             user = db.findUser(email)
-            bpcs = user.get("programs")
+            bpcs = list(user.get("programs").keys())
         else:
             error = "Wrong token"
             status = 400
@@ -150,7 +157,7 @@ def loadUserBpc():
         data = json.loads(request.get_data())
         
         token = data.get("token")
-        programId = data.get("id")
+        bpcName = data.get("name")
 
         bpc = None
         error = None
@@ -159,11 +166,12 @@ def loadUserBpc():
         session = sessions.getSession(token)
 
         if(session):
-            program = db.loadProgram(programId)
+            email = session.get("email")
+            program = db.loadProgram(email, bpcName)
             if(program):
                 bpc = program
             else:
-                error = "Wrong id"
+                error = "Wrong name"
                 status = 400
         else:
             error = "Wrong token"
@@ -179,7 +187,7 @@ def deleteUserBpc():
         data = json.loads(request.get_data())
         
         token = data.get("token")
-        programId = data.get("id")
+        bpcName = data.get("name")
 
         status = 200
 
@@ -188,12 +196,11 @@ def deleteUserBpc():
         if(session):
             email = session.get("email")
 
-            db.deleteProgram(email, programId)
+            db.deleteProgram(email, bpcName)
 
-            return "BPC deleted succesfully", status
+            return json.dumps("BPC deleted succesfully"), status
         else:
-            error = "Wrong token"
-            status = 400
+            return json.dumps("Wrong token"), 400
     else:
         return None, 400
 
@@ -203,6 +210,8 @@ def saveUserBpc():
         data = json.loads(request.get_data())
         
         token = data.get("token")
+
+        bpcName = data.get("name")
 
         session = sessions.getSession(token)
 
@@ -225,13 +234,14 @@ def saveUserBpc():
                 return str(e), 400
 
             data.update({"fieldData" : field.array})
+            data.pop("token")
 
-            db.saveProgram(email, data)
+            db.saveProgram(email, bpcName, data)
 
-            return "BPC saved succesfully", 200
+            return json.dumps("BPC saved succesfully"), 200
             
         else:
-            return "Wrong token", 400
+            return json.dumps("Wrong token"), 400
 
 
     else:
@@ -247,8 +257,6 @@ def runBpc():
 
         if(session):
             try:
-                machine = session.get("machine")
-
                 moves = data.get("moves")
                 startPos = data.get("pos")
                 startState = data.get("state")
@@ -266,14 +274,22 @@ def runBpc():
                     filler = fieldData.get("filler")
                     field = turing.Field(dimensions, size, filler=filler)
 
-                result = machine.fullExecute(moves, states, field, startState, startPos)
+                pool = multiprocessing.Pool(processes=1)
 
-                return json.dumps({"values" : result.array, "dimensions" : result.dimensions, "size" : result.size}), 200
+                process = pool.apply_async(turing.TuringMachine.fullExecute, (moves, states, field, startState, startPos))
+                
+                try:
+                    result = process.get(timeout = 30)
+                except:
+                    return json.dumps("Execution timeout"), 400
+ 
+                return json.dumps(result), 200
+
             except Exception as e:
                 return str(e), 400
 
         else:
-            return "Wrong token", 400
+            return json.dumps("Wrong token"), 400
     else:
         return None, 400
 
@@ -294,6 +310,7 @@ def startDebug():
                 startState = data.get("state")
                 states = data.get("machine")
                 fieldData = data.get("fieldData")
+                breakpoints = data.get("breakpoints")
 
                 field = None
 
@@ -306,14 +323,44 @@ def startDebug():
                     filler = fieldData.get("filler")
                     field = turing.Field(dimensions, size, filler=filler)
 
-                result = machine.startDebug(moves, states, field, startState, startPos)
+                result = machine.startDebug(moves, states, field, startState, startPos, breakpoints)
 
                 return json.dumps(result), 200
             except Exception as e:
                 return str(e), 400
 
         else:
-            return "Wrong token", 400
+            return json.dumps("Wrong token"), 400
+    else:
+        return None, 400
+
+def skipToBreakpoint(machine):
+    return machine.skipToBreakpoint(), machine
+
+@app.route('/session/debug/breakpoint', methods=['POST'])
+def nextBreakpoint():
+    if(request.method == "POST"):
+        data = json.loads(request.get_data())
+        token = data.get("token")
+
+        session = sessions.getSession(token)
+
+        if(session):
+            machine = session.get("machine")
+
+            pool = multiprocessing.Pool(processes=1)
+
+            process = pool.apply_async(skipToBreakpoint, (machine, ))
+                
+            try:
+                result, machine = process.get(timeout = 30)
+            except:
+                return json.dumps("Execution timeout"), 400
+
+            session.update({"machine" : machine})
+            return json.dumps(result), 200
+        else:
+            return json.dumps("Wrong token"), 400
     else:
         return None, 400
 
@@ -331,7 +378,7 @@ def stepDebug():
             result = machine.nextState()
             return json.dumps(result), 200
         else:
-            return "Wrong token", 400
+            return json.dumps("Wrong token"), 400
     else:
         return None, 400
 
