@@ -53,9 +53,7 @@ class MongoDb():
                     "pos" : [0 for i in range(dimensions)], 
                     "state" : list(program["table_states"].keys())[0],
                     "machine" :  program["table_states"], 
-                    "fieldData": {"dimensions" : dimensions, 
-                                "size" : size,
-                                "values" : field}}
+                    "fieldData": field}
         
         return None
 
