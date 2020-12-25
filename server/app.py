@@ -45,11 +45,8 @@ class MongoDb():
             program = self.mongo.find_program(email, name)
             field = program["default_field"]
             dimensions = 1
-            try:
-                field[0][0]
+            if(type(field[0]) is list):
                 dimensions = 2
-            except:
-                pass
             size = len(field)
 
             return {"moves" : None, 

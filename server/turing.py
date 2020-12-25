@@ -132,6 +132,7 @@ class TuringMachine:
         return {"newState" : stateOnStart, "read" : curRead, "newPos" : self.curPos.array}
 
     def skipToBreakpoint(self):
+        self.nextState()
         try:
             letter = self.field[self.curPos]
             action = self.curState.get(letter)
